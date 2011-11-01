@@ -1,7 +1,22 @@
 <?php
-
+/**
+* Plugin datasource for "Litle" API.
+*
+* The datasource takes care of 
+*	converting array parameters into XML
+*	doing the API request
+*	converting response XML into an array
+*
+* @author Alan Blount <alan@zeroasterisk.com>
+* @link http://zeroasterisk.com
+* @copyright (c) 2011 Alan Blount
+* @license MIT License - http://www.opensource.org/licenses/mit-license.php
+*
+*/
+if (!class_exists('ArrayToXml')) {
+	App::import('Lib', 'Litle.ArrayToXml');
+}
 App::import('Core', 'HttpSocket');
-
 class LitleSource extends DataSource {
 	/**
 	* The description of this data source
@@ -15,56 +30,28 @@ class LitleSource extends DataSource {
 	* @var array
 	*/
 	public $_baseConfig = array(
-		"server" => 'test',
-		"test_request" => false,
-		"login" => NULL,
-		"key" => NULL,
-		"email" => false,
-		"duplicate_window" => "120",
-		"payment_method" => "CC",
-		"default_type" => "AUTH_CAPTURE",
-		'delimit_response' => true,
-		"response_delimiter" => "|",
-		"response_encapsulator" => "",
-		'api_version' => '3.1',
-		'payment_method' => 'CC',
-		'relay_response' => false
+		"url" => NULL,
+		"user" => NULL,
+		"password" => NULL,
+		'version' => '8.7',
+		'url_xmlns' => 'http://www.litle.com/schema',
 		);
-
 	/**
-	* Translation for Litle POST data keys from default config keys
-	* Overwritten by anything in LITLE_CONFIG::$translation
-	* @var array $bad => $good
+	* Order Sources Values
+	* Parent Elements: authorization, credit, captureGivenAuth, echeckCredit, echeckSale, echeckVerification forceCapture, sale
+	* @var array
 	*/
-	public $_translation = array(
-		'card_number' => 'card_num',
-		'expiration' => 'exp_date',
-		'default_type' => 'type',
-		'transaction_id' => 'trans_id',
-		'key' => 'tran_key',
-		'delimit_response' => 'delim_data',
-		'response_delimiter' => 'delim_char',
-		'response_encapsulator' => 'encap_char',
-		'api_version' => 'version',
-		'payment_method' => 'method',
-		'email_customer' => 'email',
-		'customer_email' => 'email',
-		'customer_id' => 'cust_id',
-		'cust_ip' => 'customer_ip',
-		'billing_first_name' => 'first_name',
-		'billing_last_name' => 'last_name',
-		'billing_company' => 'company',
-		'billing_street' => 'street',
-		'billing_city' => 'city',
-		'billing_state' => 'state',
-		'billing_zip' => 'zip',
-		'billing_country' => 'country',
-		'billing_phone' => 'phone',
-		'billing_fax' => 'fax',
-		'billing_email' => 'email',
+	public $orderSources = array(
+		'3dsAuthenticated' => 'The transaction qualified as CPS/e-Commerce Preferred as an authenticated purchase. Use this value only if you authenticated the cardholder.',
+		'3dsAttempted' => 'The transaction qualified as CPS/e-Commerce Preferred as an attempted authentication. Use this value only if you attempted to authenticate the cardholder and either the Issuer or cardholder is not participating in Verified by Visa.',
+		'ecommerce' => 'The transaction is an Internet or electronic commerce transaction.',
+		'installment' => 'The transaction in an installment payment.',
+		'mailorder' => 'The transaction is for a single mail order transaction.',
+		'recurring' => 'The transaction is a recurring transaction.',
+		'retail' => 'The transaction is a Swiped or Keyed Entered retail purchase transaction.',
+		'telephone' => 'The transaction is for a single telephone order.',
 		);
 	/**
-	*
 	* These fields are often defined in the data set, but don't need to be sent to Litle
 	*
 	* @var array
@@ -82,9 +69,67 @@ class LitleSource extends DataSource {
 	* Set configuration and establish HttpSocket with appropriate test/production url.
 	* @param config an array of configuratives to be passed to the constructor to overwrite the default
 	*/
-	public function __construct($config) {
+	public function __construct($config=array()) {
 		parent::__construct($config);
+		// Try an import the plugins/litle/config/litle.php file and merge
+		// any default and datasource specific config with the defaults above
+		if (!App::import(array('type' => 'File', 'name' => 'Litle.LITLE_CONFIG', 'file' => APP.'config'.DS.'litle.php'))) {
+			if (!App::import(array('type' => 'File', 'name' => 'Litle.LITLE_CONFIG', 'file' => 'config'.DS.'litle.php'))) {
+				// try more?
+			}
+		}
+		$config = array();
+		if (class_exists('LITLE_CONFIG')) {
+			$LITLE_CONFIG = new LITLE_CONFIG();
+			if (isset($LITLE_CONFIG->config)) {
+				$config = set::merge($config, $LITLE_CONFIG->config);
+			}
+		}
+		// Add any config from Configure class that you might have added at any point before the model is instantiated.
+		if (($configureConfig = Configure::read('Litle.config')) != false) {
+			$config = set::merge($config, $configureConfig);
+		}
+		$config = $this->config($config);
 		$this->Http = new HttpSocket();
+	}
+	/**
+    * Simple function to return the $config array
+    * @param array $config if set, merge with existing array
+    * @param bool $verify
+    * @return array $config
+    */
+	public function config($config = array(), $verify=true) {
+		if (!isset($this->config) || empty($this->config) || !is_array($this->config)) {
+			$this->config = $this->_baseConfig;
+		}
+		if (is_array($config) && !empty($config)) {
+			$config = set::merge($this->config, $config);
+		} else {
+			$config = $this->config;
+		}
+		if (!isset($config['version']) || empty($config['version'])) {
+			$config = set::merge($this->_baseConfig, $config);
+		}
+		if ($verify) {
+			$errors = array();
+			if (!isset($config['url']) || empty($config['url'])) {
+				$errors[] = "Missing or incorrect url";
+			}
+			if (!isset($config['user']) || empty($config['user'])) {
+				$errors[] = "Missing or incorrect user";
+			}
+			if (!isset($config['password']) || empty($config['password'])) {
+				$errors[] = "Missing or incorrect password";
+			}
+			if (!isset($config['merchantId']) || empty($config['merchantId'])) {
+				$errors[] = "Missing or incorrect merchantId";
+			}
+			if (!empty($errors)) {
+				die("Sorry, Litle Configuration is incorrect.<br>\n".implode("<br>\n", $errors));
+			}
+		}
+		$this->config = $config;
+		return $config;
 	}
 	/**
 	* Not currently possible to read data. Method not implemented.
@@ -147,51 +192,96 @@ class LitleSource extends DataSource {
 	/**
 	* Translate keys to a value Litle.net expects in posted data, as well as encapsulating where relevant. Returns false
 	* if no data is passed, otherwise array of translated data.
-	* @param array $data
-	* @return mixed
+	* @param mixed $data
+	* @return string $xml
 	*/
-	private function __prepareDataForPost($data = null) {
+	public function prepareApiData($data = null) {
 		if (empty($data)) {
 			return false;
 		}
-		$encapsulators = array('line_items','taxes','freight','duty');
-		$return = array();
-		$data = array_diff_key($data, array_flip($this->_fieldsToIgnore));
-		foreach ($data as $key => $value) {
-			if (empty($value)) {
-				continue;
-			}
-			if (in_array($key, $encapsulators)) {
-				if (is_array($value)) {
-					$value = implode('<|>', $value);
-				}
-			}
-			// translate key
-			if (array_key_exists($key, $this->_translation)) {
-				$key = $this->_translation[$key];
-			}
-			// cleanup key
-			if (substr($key, 0, 2)=='x_') {
-				$key = substr($key, 2);
-			}
-			$return["x_{$key}"] = $value;
+		if (is_string($data)) {
+			// assume it's a XML body already
+			return $data;
 		}
-		return $return;
+		$config = $this->config();
+		// authentication
+		if (array_key_exists('authentication', $data)) {
+			$authentication = $data['authentication'];
+			unset($data['authentication']);
+		} else {
+			$authentication = array('authentication' => array(
+				'user' => $config['user'], 'password' => $config['password']
+				));
+		}
+		// litleOnlineRequest wrapper
+		if (array_key_exists('litleOnlineRequest', $data)) {
+			$litleOnlineRequest = $data['litleOnlineRequest'];
+			unset($data['litleOnlineRequest']);
+		} else {
+			$attrib = array_intersect_key($config, array('version' => 0, 'url_xmlns' => 0, 'merchantId' => 0)); 
+			$litleOnlineRequest = compact('attrib');
+		}
+		$litleOnlineRequest = array_merge($litleOnlineRequest, $authentication);
+		$litleOnlineRequest = array_merge($litleOnlineRequest, $data);
+		$requestArray = compact('litleOnlineRequest');
+		$xml = ArrayToXml::build($requestArray);
+		$xml = str_replace('url_xmlns', 'xmlns', $xml);
+		$function = __function__;
+		$this->log[] =compact('func', 'config', /* 'data', */ 'requestArray', 'xml');
+		/* */
+		return $xml;
 	}
 	
 	/**
 	* Parse the response data from a post to authorize.net
-	* @param object $Model
 	* @param string $response
-	* @param array $input
-	* @param string $url
+	* @param object $Model
 	* @return array
 	*/
-	private function __parseResponse(&$Model, $response, $input=null, $url=null) {
-		$status = 'unknown';
-		$error = $transaction_id = null;
-		die('WIP __parseResponse (should prob interact w/ model, since various responses will come in');
-		return compact('status', 'transaction_id', 'error', 'response', 'response_reason', 'avs_response', 'input', 'data', 'url', 'type');
+	public function parseResponse($response, &$Model=null) {
+		$errors = array();
+		$transaction_id = null;
+		$response_raw = '';
+		$response_array = array();
+		if (is_string($response)) {
+			$response_raw = $response;
+			if (!class_exists('Xml')) {
+				App::import("Core", "Xml");
+			}
+			$Xml = new Xml($response);
+			$response_array = $Xml->toArray();
+		} elseif (is_array($response_array)) {
+			$response_array = $response;
+			if (array_key_exists('response_raw', $response_array)) {
+				$response_raw = $response_array['response_raw'];
+				unset($response_array['response_raw']);
+			}
+		} else {
+			$errors[] = 'Response is in invalid format';
+		}
+		// boil down to just the response we are interested in
+		if (array_key_exists('litleOnlineResponse', $response_array)) {
+			$response_array = $response_array['litleOnlineResponse'];
+		} elseif (array_key_exists('LitleOnlineResponse', $response_array)) {
+			$response_array = $response_array['LitleOnlineResponse'];
+		}
+		// verify response_array
+		if (!is_array($response_array)) {
+			$errors[] = 'Response is not formatted as an Array';
+		} elseif (!array_key_exists('response', $response_array)) {
+			$errors[] = 'Response.response missing (request xml validity)';
+		}
+		if (array_key_exists('message', $response_array) && $response_array['message']!='Valid Format') {
+			$errors[] = $response_array['message'];
+		} elseif (intval($response_array['response'])!==0) {
+			$errors[] = 'Response.response indicates request xml is in-valid, unknown Message';
+		}
+		if (empty($errors)) {
+			$status = 'good';
+		} else {
+			$status = 'error';
+		}
+		return compact('status', 'transaction_id', 'errors', 'response_array', 'response_raw');
 	}
 
 	/**
@@ -200,47 +290,47 @@ class LitleSource extends DataSource {
 	* or an array of the parsed response from authorize.net if valid
 	*
 	* @param array $request
-	* @return mixed
+	* @param object $Model optional
+	* @return mixed $response
 	*/
-	private function __request(&$Model, $data) {
+	public function __request($data, &$Model=null) {
+		$data_json = null;
+		$errors = array();
 		if (empty($data)) {
-			return false;
+			$errors[] = "Missing input data";
+		} elseif (is_array($data)) {
+			$data_json = json_encode($data);
+			$data = $this->prepareApiData($data);
 		}
-		if (!empty($data['server'])) {
-			$server = $data['server'];
-			unset($data['server']);
-		} else {
-			$server = $this->config['server'];
-		}
-		$url = $this->config['url'];
-		$data = $this->__prepareDataForPost($data);
-		$this->Http->reset();
-		$response = $this->Http->post($url, $data, array(
-			'header' => array(
-    			'Connection' => 'close',
-    			'User-Agent' => 'CakePHP Litle Plugin v.'.$this->config['LitlePluginVersion'],
-				)
-			));
-		
-		if ($this->Http->response['status']['code'] != 200) {
-			$Model->errors[] = $error = 'LitleSource: Error: Could not connect to authorize.net... bad credentials?';
-			trigger_error(__d('adobe_connect', $error, true), E_USER_WARNING);
-			return false;
-		}
-		$Model->response = $return = $this->__parseResponse($Model, $response, $data, $url);
-		// log to an array on the model
-		if (isset($Model->log) && is_array($Model->log)) {
-			$Model->log[] = $return;
-		}
-		// log to a model (database table), if setup on the model
-		if (isset($Model->logModel) && is_object($Model->logModel)) {
-			// inject data from this model to the logModel, if set
-			// this is a convenient way to pass IDs around, would have to be handled in the logModel 
-			if (isset($Model->logModelData)) {
-				$Model->logModel->logModelData = $Model->logModelData; 
+		if (empty($errors)) {
+			$this->Http->reset();
+			$url = $this->config['url'];
+			$response_raw = $this->Http->post($url, $data, array(
+				'header' => array(
+					'Connection' => 'close',
+					'User-Agent' => 'CakePHP Litle Plugin v.'.$this->config['version'],
+					)
+				));
+			if ($this->Http->response['status']['code'] != 200) {
+				$errors[] = "LitleSource: Error: Could not connect to authorize.net... bad credentials?";
 			}
-			$Model->logModel->create(false);
-			$Model->logModel->save($return);
+		}
+		if (empty($errors)) {
+			$response = $this->parseResponse($response_raw);
+			extract($response);
+		}
+		// compact response array
+		$return = compact('status', 'transaction_id', 'errors', 'data_json', 'data', 'response_array', 'response_raw');
+		// assign to model if set
+		if (is_object($Model)) {
+			$Model->lastRequest = $return;
+			// log to an array on the model
+			if (isset($Model->log) && is_array($Model->log)) {
+				$Model->log[] = $return;
+			}
+			if (method_exists($Model, 'logRequest')) {
+				$Model->logRequest($return);
+			}
 		}
 		return $return;
 	}

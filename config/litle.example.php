@@ -3,8 +3,8 @@ class LITLE_CONFIG {
 	var $config = array(
 		'datasource' => 'Litle.LitleSource',
 		'server' => 'test', 
-		'login' => '**********',
-		'key' => '**********',
+		'user' => '**********',
+		'password' => '**********',
 		'logModel' => 'LitleApiLog', // null to disable transaction logging
 		'test_account' => '123457890',
 		'test_cvv' => '123',

@@ -28,6 +28,11 @@ class LitleRecycler extends LitleAppModel {
 	*/
 	public $name ='LitleRecycler';
 	/**
+	* The name of this model
+	* @var name
+	*/
+	public $useTable = false;
+	/**
 	* The fields and their types for the form helper
 	* @var array
 	*/
