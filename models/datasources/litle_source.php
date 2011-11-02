@@ -37,23 +37,7 @@ class LitleSource extends DataSource {
 		'url_xmlns' => 'http://www.litle.com/schema',
 		);
 	/**
-	* Order Sources Values
-	* Parent Elements: authorization, credit, captureGivenAuth, echeckCredit, echeckSale, echeckVerification forceCapture, sale
-	* @var array
-	*/
-	public $orderSources = array(
-		'3dsAuthenticated' => 'The transaction qualified as CPS/e-Commerce Preferred as an authenticated purchase. Use this value only if you authenticated the cardholder.',
-		'3dsAttempted' => 'The transaction qualified as CPS/e-Commerce Preferred as an attempted authentication. Use this value only if you attempted to authenticate the cardholder and either the Issuer or cardholder is not participating in Verified by Visa.',
-		'ecommerce' => 'The transaction is an Internet or electronic commerce transaction.',
-		'installment' => 'The transaction in an installment payment.',
-		'mailorder' => 'The transaction is for a single mail order transaction.',
-		'recurring' => 'The transaction is a recurring transaction.',
-		'retail' => 'The transaction is a Swiped or Keyed Entered retail purchase transaction.',
-		'telephone' => 'The transaction is for a single telephone order.',
-		);
-	/**
 	* These fields are often defined in the data set, but don't need to be sent to Litle
-	*
 	* @var array
 	*/
 	public $_fieldsToIgnore = array(
@@ -66,16 +50,32 @@ class LitleSource extends DataSource {
 	*/
 	public $Http;
 	/**
+	* Signed request string to pass to Amazon
+	* @var string
+	*/
+	protected $_request = null;
+	/**
+	* Request Logs
+	* @var array
+	*/
+	private $__requestLog = array();
+	/**
 	* Set configuration and establish HttpSocket with appropriate test/production url.
 	* @param config an array of configuratives to be passed to the constructor to overwrite the default
 	*/
 	public function __construct($config=array()) {
 		parent::__construct($config);
-		// Try an import the plugins/litle/config/litle.php file and merge
+		// Try an import the .../config/litle_config.php file and merge
 		// any default and datasource specific config with the defaults above
-		if (!App::import(array('type' => 'File', 'name' => 'Litle.LITLE_CONFIG', 'file' => APP.'config'.DS.'litle.php'))) {
-			if (!App::import(array('type' => 'File', 'name' => 'Litle.LITLE_CONFIG', 'file' => 'config'.DS.'litle.php'))) {
-				// try more?
+		$paths = array(
+			APP.'config'.DS.'litle_config.php',
+			APP.'config'.DS.'litle.php',
+			'config'.DS.'litle_config.php',
+			'config'.DS.'litle.php',
+			);
+		foreach ( $paths as $path ) { 
+			if (!class_exists('LITLE_CONFIG')) {
+				App::import(array('type' => 'File', 'name' => 'Litle.LITLE_CONFIG', 'file' => $path));
 			}
 		}
 		$config = array();
@@ -91,6 +91,24 @@ class LitleSource extends DataSource {
 		}
 		$config = $this->config($config);
 		$this->Http = new HttpSocket();
+	}
+	/**
+	*
+	*
+	*/
+	public function describe($model) {
+		if (isset($model->_schema)) {
+			return $model->_schema;
+		} elseif (isset($model->alias) && isset($this->_schema) && isset($this->_schema[$model->alias])) {
+			return $this->_schema[$model->alias];
+		}
+		return array();
+	}
+	/**
+	* Unsupported methods other CakePHP model and related classes require.
+	*/
+	public function listSources() {
+		return array('litle_transactions');
 	}
 	/**
     * Simple function to return the $config array
@@ -142,18 +160,14 @@ class LitleSource extends DataSource {
 	*/
 	public function create(&$Model, $fields = array(), $values = array()) {
 		$data = array_combine($fields, $values);
-		$data = Set::merge($this->config, $data);
-		$result = $this->__request($data, $Model);
-		return $result;
+		return $this->__request($data, $Model);
 	}
 	/**
 	* Capture a previously authorized transaction
 	*/
 	public function update(&$Model, $fields = null, $values = null) {
 		$data = array_combine($fields, $values);
-		$data = Set::merge($this->config, $data);
-		$result = $this->__request($data, $Model);
-		return $result;
+		return $this->__request($data, $Model);
 	}
 	/**
 	* Void a transaction
@@ -180,16 +194,12 @@ class LitleSource extends DataSource {
 		return $this->__request($data, $Model);
 	}
 	/**
-	* Unsupported methods other CakePHP model and related classes require.
-	*/
-	public function listSources() {}
-	/**
 	* Translate keys to a value Litle.net expects in posted data, as well as encapsulating where relevant. Returns false
 	* if no data is passed, otherwise array of translated data.
 	* @param mixed $data
 	* @return string $xml
 	*/
-	public function prepareApiData($data = null) {
+	public function prepareApiData($data = null, &$Model=null) {
 		if (empty($data)) {
 			return false;
 		}
@@ -198,6 +208,14 @@ class LitleSource extends DataSource {
 			return $data;
 		}
 		$config = $this->config();
+		// litleOnlineRequestKey wrapper
+		if (array_key_exists('litleOnlineRequest', $data)) {
+			$litleOnlineRequestKey = $data['litleOnlineRequest'];
+			unset($data['litleOnlineRequest']);
+		} else {
+			$attrib = array_intersect_key($config, array('version' => 0, 'url_xmlns' => 0, 'merchantId' => 0)); 
+			$litleOnlineRequestKey = 'litleOnlineRequest|'.json_encode($attrib);
+		}
 		// authentication
 		if (array_key_exists('authentication', $data)) {
 			$authentication = $data['authentication'];
@@ -207,17 +225,18 @@ class LitleSource extends DataSource {
 				'user' => $config['user'], 'password' => $config['password']
 				));
 		}
-		// litleOnlineRequest wrapper
-		if (array_key_exists('litleOnlineRequest', $data)) {
-			$litleOnlineRequest = $data['litleOnlineRequest'];
-			unset($data['litleOnlineRequest']);
+		// root wrapper
+		if (array_key_exists('root', $data)) {
+			$root = $data['root'];
+			unset($data['root']);
 		} else {
-			$attrib = array_intersect_key($config, array('version' => 0, 'url_xmlns' => 0, 'merchantId' => 0)); 
-			$litleOnlineRequest = compact('attrib');
+			$root = (isset($Model->alias) ? $Model->alias : null); 
 		}
-		$litleOnlineRequest = array_merge($litleOnlineRequest, $authentication);
-		$litleOnlineRequest = array_merge($litleOnlineRequest, $data);
-		$requestArray = compact('litleOnlineRequest');
+		// re-order and nest
+		if (is_string($root) && !empty($root)) {
+			$data = array($root => $data);
+		}
+		$requestArray = array($litleOnlineRequestKey => array_merge($authentication, $data));
 		$xml = ArrayToXml::build($requestArray);
 		$xml = str_replace('url_xmlns', 'xmlns', $xml);
 		$function = __function__;
@@ -294,7 +313,7 @@ class LitleSource extends DataSource {
 			$errors[] = "Missing input data";
 		} elseif (is_array($data)) {
 			$data_json = json_encode($data);
-			$data = $this->prepareApiData($data);
+			$data = $this->prepareApiData($data, $Model);
 		}
 		if (empty($errors)) {
 			$this->Http->reset();

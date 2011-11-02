@@ -1,9 +1,9 @@
 <?php
-/* LitleTransaction Test cases generated on: 2011-10-31 13:10:59 : 1320082739*/
-App::import('Model', 'litle.LitleTransaction');
-
+/* LitleSale Test cases generated on: 2011-10-31 13:10:59 : 1320082739*/
+App::import('Datasource', 'litle.LitleSource');
+App::import('Model', 'litle.LitleSale');
 App::import('Lib', 'Templates.AppTestCase');
-class LitleTransactionTestCase extends AppTestCase {
+class LitleSaleTestCase extends AppTestCase {
 	
 	public $plugin = 'app';
 	public $fixtures = array();
@@ -18,12 +18,12 @@ class LitleTransactionTestCase extends AppTestCase {
 	*/
 	public function startTest($method) {
 		//parent::startTest($method);
-		//$this->LitleTransaction = AppMock::getTestModel('LitleTransaction');
-		#$this->LitleTransaction =& ClassRegistry::init('LitleTransaction');
-		$this->LitleTransaction = new LitleTransaction(false, null, 'litle');
-		echo $this->LitleTransaction->useDbConfig."\n";die();
-		#$fixture = new LitleTransactionFixture();
-		#$this->record = array('LitleTransaction' => $fixture->records[0]);
+		//$this->LitleSale = AppMock::getTestModel('LitleSale');
+		#$this->LitleSale =& ClassRegistry::init('LitleSale');
+		$this->LitleSale = new LitleSale(false, null, 'litle');
+		echo $this->LitleSale->useDbConfig."\n";die();
+		#$fixture = new LitleSaleFixture();
+		#$this->record = array('LitleSale' => $fixture->records[0]);
 	}
 	
 	/**
@@ -35,7 +35,7 @@ class LitleTransactionTestCase extends AppTestCase {
 	*/
 	public function endTest($method) {
 		parent::endTest($method);
-		unset($this->LitleTransaction);
+		unset($this->LitleSale);
 		ClassRegistry::flush();
 	}
 	
@@ -43,9 +43,9 @@ class LitleTransactionTestCase extends AppTestCase {
 	* Validate the plugin setup
 	*/
 	function testSetup() {
-		$this->assertTrue(is_object($this->LitleTransaction));
-		$this->assertEqual($this->LitleTransaction->alias, 'LitleTransaction');
-		$config = $this->LitleTransaction->config();
+		$this->assertTrue(is_object($this->LitleSale));
+		$this->assertEqual($this->LitleSale->alias, 'LitleSale');
+		$config = $this->LitleSale->config();
 		$this->assertEqual($config['datasource'], 'Litle.LitleSource');
 		$this->assertFalse(empty($config['user']));
 		$this->assertFalse(empty($config['password']));
@@ -71,7 +71,7 @@ class LitleTransactionTestCase extends AppTestCase {
 			'billToAddress.country' => 'USA', // missing above
 			);
 		$this->__deep_shuffle($data);
-		$response = $this->LitleTransaction->translateFields($data);
+		$response = $this->LitleSale->translateFields($data);
 		$expected = array(
 			'card' => array(
 				'number' => '5186005800001012',
@@ -117,7 +117,7 @@ class LitleTransactionTestCase extends AppTestCase {
 				'country' => 'USA',
 				),
 			);
-		$response = $this->LitleTransaction->sale($sale);
+		$response = $this->LitleSale->save($sale);
 		//print_r(compact('response'));
 	}
 	

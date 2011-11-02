@@ -136,17 +136,17 @@ class LitleSourceTestCase extends AppTestCase {
 	}
 	/**
 	* Validate prepApiData functionality
-	* /
+	*/
 	function testPrepApiData() {
 		// set only the sale node, the auth and wrapper should be set in the function
 		// the mockup data assumes we are giving the function exactly what it expected
 		$response = str_replace(array("\n", "	"), '', $this->LitleSource->prepareApiData($this->sale));
 		// expected data straight out of the examples sent with the API documentaiton
 		$expected = str_replace(array("\n", "	"), '', '
-			<litleOnlineRequest version="'.$this->LitleSource->config['version'].'" xmlns="'.$this->LitleSource->config['url_xmlns'].'" merchantId="'.$this->configs_for_datasource['merchantId'].'">
+			<litleOnlineRequest version="'.$this->LitleSource->config['version'].'" xmlns="'.$this->LitleSource->config['url_xmlns'].'" merchantId="'.$this->LitleSource->config['merchantId'].'">
 				<authentication>
-					<user>'.$this->configs_for_datasource['user'].'</user>
-					<password>'.$this->configs_for_datasource['password'].'</password>
+					<user>'.$this->LitleSource->config['user'].'</user>
+					<password>'.$this->LitleSource->config['password'].'</password>
 				</authentication>
 				<sale id="1" reportGroup="ABC Division" customerId="038945">
 					<orderId>5234234</orderId>
@@ -293,10 +293,11 @@ class LitleSourceTestCase extends AppTestCase {
 		$this->AssertEqual($request['errors'], array());
 		$reponse = $request['response_array'];
 		$this->AssertEqual($reponse['message'], "Valid Format");
-		$date = date("Y-m-d");
-		$this->AssertTrue((strpos($date, $reponse['SaleResponse']['responseTime'])!==false));
+		$this->AssertTrue((strpos($reponse['SaleResponse']['responseTime'], date("Y-m-"))!==false), "date ".date("Y-m-")." not found in responseTime {$reponse['SaleResponse']['responseTime']}");
 		unset($reponse['SaleResponse']['responseTime']);
-		$expected = Array(
+		print_r($request);
+		print_r($reponse);
+		$expected = array(
 			'duplicate' => true,
 			'id' => 1,
 			'reportGroup' => 'ABC Division',
@@ -304,7 +305,7 @@ class LitleSourceTestCase extends AppTestCase {
 			'litleTxnId' => '819794770332550400',
 			'orderId' => '5234234',
 			'response' => '000',
-			'postDate' => $date,
+			'postDate' => date("Y-m-d"),
 			'message' => 'Approved',
 			'authCode' => '123457',
 			'FraudResult' => Array(
@@ -312,7 +313,7 @@ class LitleSourceTestCase extends AppTestCase {
 				'cardValidationResult' => 'M',
 				),
 			);
-		$this->AssertEqual($reponse['SaleResponse'], $expected);
+		$this->AssertEqual($reponse['SaleResponse'], $expected, "unexpected response: ".json_encode(set::diff($reponse['SaleResponse'], $expected)));
 	}
 	/*  */
 }
