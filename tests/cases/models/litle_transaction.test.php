@@ -19,8 +19,9 @@ class LitleTransactionTestCase extends AppTestCase {
 	public function startTest($method) {
 		//parent::startTest($method);
 		//$this->LitleTransaction = AppMock::getTestModel('LitleTransaction');
-		$this->LitleTransaction =& ClassRegistry::init('LitleTransaction');
-		$this->LitleTransaction->useDbConfig = 'litle';
+		#$this->LitleTransaction =& ClassRegistry::init('LitleTransaction');
+		$this->LitleTransaction = new LitleTransaction(false, null, 'litle');
+		echo $this->LitleTransaction->useDbConfig."\n";die();
 		#$fixture = new LitleTransactionFixture();
 		#$this->record = array('LitleTransaction' => $fixture->records[0]);
 	}

@@ -143,7 +143,7 @@ class LitleSource extends DataSource {
 	public function create(&$Model, $fields = array(), $values = array()) {
 		$data = array_combine($fields, $values);
 		$data = Set::merge($this->config, $data);
-		$result = $this->__request($Model, $data);
+		$result = $this->__request($data, $Model);
 		return $result;
 	}
 	/**
@@ -151,16 +151,9 @@ class LitleSource extends DataSource {
 	*/
 	public function update(&$Model, $fields = null, $values = null) {
 		$data = array_combine($fields, $values);
-		if ((float)$data['amount'] >= 0) {
-			$data = Set::merge($data, array('default_type' => 'PRIOR_AUTH_CAPTURE'));
-		} else {
-			// if a negative value is passed, assuming refund
-			$data = Set::merge($data, array('default_type' => 'CREDIT'));
-			// Litle assumes we want to send a positive number for a credit transcation (how much to credit)
-			$data['amount'] = abs((float) $data['amount']);
-		}
 		$data = Set::merge($this->config, $data);
-		return $this->__request($Model, $data);
+		$result = $this->__request($data, $Model);
+		return $result;
 	}
 	/**
 	* Void a transaction
@@ -178,12 +171,13 @@ class LitleSource extends DataSource {
 		} else {
 			$id = current($id[$Model->primaryKey]);
 		}
+		# TODO: set this default "helper" data correctly (or disable this method)
 		$data = array(
 			'transaction_id' => $id,
 			'default_type' => 'VOID'
 			);
 		$data = Set::merge($this->config, $data);
-		return $this->__request($Model, $data);
+		return $this->__request($data, $Model);
 	}
 	/**
 	* Unsupported methods other CakePHP model and related classes require.
