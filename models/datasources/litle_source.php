@@ -238,7 +238,10 @@ class LitleSource extends DataSource {
 		}
 		$requestArray = array($litleOnlineRequestKey => array_merge($authentication, $data));
 		$xml = ArrayToXml::build($requestArray);
-		$xml = str_replace('url_xmlns', 'xmlns', $xml);
+		$xml = str_replace('url_xmlns', 'xmlns', $xml); // special replacement
+		$xml = str_replace('><', ">\n<", $xml); // formatting with linebreaks
+		#$xml = preg_replace('#(<[^/>]*>)(<[^/>]*>)#', "\$1\n\$2", $xml);
+		#$xml = preg_replace('#(</[a-zA-Z0-9]*>)(</[a-zA-Z0-9]*>)#', "\$1\n\$2", $xml);
 		$function = __function__;
 		$this->log[] =compact('func', 'config', /* 'data', */ 'requestArray', 'xml');
 		/* */

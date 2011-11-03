@@ -156,8 +156,15 @@ class ArrayToXml {
 			return "TRUE";
 		} elseif ($value===false) {
 			return "FALSE";
-		} elseif (is_numeric($value)) {
-			return $value;
+		} elseif (is_int($value)) {
+			return number_format($value, 0, '.', '');
+		} elseif (is_float($value)) {
+			// not sure how many decimal points
+			// so we start with 6, and trim extra 0s of the right)
+			$string = number_format($value, 6, '.', '');
+			$string = rtrim($string, 0);
+			$string = rtrim($string, '.');
+			return $string;
 		}
 		return strval($value);
 	}

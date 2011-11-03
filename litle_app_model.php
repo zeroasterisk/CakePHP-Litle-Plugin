@@ -37,6 +37,154 @@ class LitleAppModel extends AppModel {
 	*/
 	public $logModel = false;
 	/**
+	* Elements require specific ordering, even for optional children :(
+	* So we have to define the structure, merge in values, strip out blanks
+	* handled in beforeSave()
+	* NOTE: we "should" be able to just use the schema for the core elements, 
+	*   but all the nested elements are another matter... 
+	*   seemed cleaner to just re-specify here. 
+	* @param array $templates
+	*/
+	public $templates = array(
+		'attrib' => array(
+			'id' => null,
+			'reportGroup' => null,
+			),
+		'sale' => array(
+			// attrib
+			'id' => null,
+			'reportGroup' => null,
+			'customerId' => null,
+			// child
+			'orderId' => null,
+			'amount' => null,
+			'orderSource' => null,
+			'customerInfo' => null,
+			'billToAddress' => null,
+			'shipToAddress' => null,
+			'card' => null,
+			'paypage' => null, 
+			'token' => null, 
+			'paypal' => null, 
+			'billMeLaterRequest' => null,
+			'cardholderAuthentication' => null,
+			'customBilling' => null,
+			'taxType' => null,
+			'enhancedData' => null,
+			'processingInstructions' => null,
+			'pos' => null,
+			'payPalOrderComplete' => null,
+			'amexAggregatorData' => null,
+			'allowPartialAuth' => null,
+			'healthcareIIAS' => null,
+			'filtering' => null,
+			'merchantData' => null,
+			'litleTxnId' => null,
+			),
+		'void' => array(
+			// attrib
+			'id' => null,
+			'reportGroup' => null,
+			'customerId' => null,
+			// child
+			'litleTxnId' => null,
+			'processingInstructions' => null,
+			),
+		'credit' => array(
+			// attrib
+			'id' => null,
+			'reportGroup' => null,
+			'customerId' => null,
+			// child
+			'litleTxnId' => null,
+			'amount' => null,
+			),
+		'card' => array(
+			'type' => null,
+			'number' => null,
+			'expDate' => null,
+			'cardValidationNum' => null,
+			),
+		'token' => array(
+			'litleToken' => null,
+			'expDate' => null,
+			'cardValidationNum' => null,
+			'routingNum' => null,
+			'accType' => null,
+			),
+		'billToAddress' => array(
+			'name' => null,
+			'firstName' => null,
+			'middleInitial' => null,
+			'lastName' => null,
+			'companyName' => null,
+			'addressLine1' => null,
+			'addressLine2' => null,
+			'addressLine3' => null,
+			'city' => null,
+			'state' => null,
+			'zip' => null,
+			'country' => null,
+			'email' => null,
+			'phone' => null,
+			),
+		'customerInfo' => array(
+			'ssn' => null,
+			'dob' => null,
+			'customerRegistrationDate' => null,
+			'customerType' => null,
+			'incomeAmount' => null,
+			'employerName' => null,
+			'customerWorkTelephone' => null,
+			'residenceStatus' => null,
+			'yearsAtResidence' => null,
+			'yearsAtEmployer' => null,
+			),
+		'customBilling' => array(
+			'phone' => null,
+			'url' => null,
+			'city' => null,
+			'descriptor' => null,
+			),
+		'enhancedData' => array(
+			'customerReference' => null,
+			'salesTax' => null,
+			'deliveryType' => null,
+			'taxExempt' => null,
+			'discountAmount' => null,
+			'shippingAmount' => null,
+			'dutyAmount' => null,
+			'shipFromPostalCode' => null,
+			'destinationPostalCode' => null,
+			'destinationCountryCode' => null,
+			'invoiceReferenceNumber' => null,
+			'orderDate' => null,
+			'detailTax' => null,
+			'lineItemData' => null,
+			),
+		'detailTax' => array(
+			'taxAmount' => null,
+			'taxIncludedInTotal' => null,
+			'taxRate' => null,
+			'taxTypeIdentifier' => null,
+			'cardAcceptorTaxId' => null,
+			),
+		'lineItemData' => array(
+			'itemDescription' => null,
+			'itemSequenceNumber' => null,
+			'productCode' => null,
+			'quantity' => null,
+			'unitOfMeasure' => null,
+			'taxAmount' => null,
+			'lineItemTotal' => null,
+			'lineItemTotalWithTax' => null,
+			'itemDiscountAmount' => null,
+			'commodityCode' => null,
+			'unitCost' => null,
+			'detailTax' => null,
+			),
+		);
+	/**
 	* Updates config from: app/config/litle_config.php
 	* Sets up $this->logModel
 	* @param mixed $id
@@ -98,6 +246,13 @@ class LitleAppModel extends AppModel {
 			$db->config($config);
 		}
 		return $db->config;
+	}
+	/**
+	* beforeSave clears out $this->lastRequest
+	*/
+	function beforeSave($options=array()) {
+		$this->lastRequest = array();
+		return parent::beforeSave($options);
 	}
 	/**
 	* afterSave parses results and verifies status for all transactions
@@ -184,8 +339,69 @@ class LitleAppModel extends AppModel {
 		}
 		$config = $this->config;
 		if (isset($config['defaults'][$style]) && is_array($config['defaults'][$style]) && !empty($config['defaults'][$style])) {
-			$ordered_defaults = set::merge($data, $config['defaults'][$style]);
-			$data = set::merge($ordered_defaults, set::filter($data));
+			$data = set::merge($config['defaults'][$style], $data);
+		}
+		if (isset($this->_schema)) {
+			foreach ( array_keys($this->_schema) as $key ) {
+				if ((!isset($data[$key]) || empty($data[$key])) && array_key_exists($key, $config['defaults']) && !is_array($config['defaults'][$key])) {
+					$data[$key] = $config['defaults'][$key];
+				}
+			}
+		}
+		return $data;
+	}
+	/**
+	* Litle requires the XML data to be in a specific order :(
+	* As such, we need to make sure every node in our array is correctly ordered
+	* NOTE: this ends in a set::filter() which will remove all empty values (except for 0)
+	* @param array $data
+	* @param string $templateKey
+	* @param array $rootAttributes optional
+	* @return array $data
+	*/
+	function finalizeFields($data, $templateKey=null, $rootAttributes=array()) {
+		// include only allowed fields (must be defined in the schema)
+		$stripped_data_keys = array_diff(array_keys($data), array_keys($this->_schema));
+		$data = array_intersect_key($data, $this->_schema);
+		// reorder based on templates (also strips empties)
+		$data = $this->orderFields($data, $templateKey);
+		if (!empty($rootAttributes)) {
+			if (isset($rootAttributes['id'])) {
+				$rootAttributes['id'] = substr($rootAttributes['id'], -25);
+			}
+			$data = array_diff_key($data, $rootAttributes);
+			$data['root'] = $templateKey.'|'.json_encode($rootAttributes);
+		} else {
+			$data['root'] = $templateKey;
+		}
+		return $data;
+	}
+	/**
+	* Litle requires the XML data to be in a specific order :(
+	* As such, we need to make sure every node in our array is correctly ordered
+	* NOTE: this ends in a set::filter() which will remove all empty values (except for 0)
+	* @param array $data
+	* @param string $templateKey
+	* @return array $data
+	*/
+	function orderFields($data, $templateKey=null) {
+		// act on this node
+		if (array_key_exists($templateKey, $this->templates) && is_array($data)) {
+			$data = set::merge($this->templates[$templateKey], $data);
+		}
+		// recursivly act on all child nodes
+		foreach ( $data as $key => $val ) { 
+			if (array_key_exists($key, $this->templates) && is_array($val)) {
+				$data[$key] = $this->orderFields($val, $key);
+			}
+		}
+		// clear all null elements (recursivly, so do this after recusion)
+		$data = set::filter($data);
+		// shuffle attrib to the end
+		if (isset($data['attrib'])) {
+			$attrib = $data['attrib'];
+			unset($data['attrib']);
+			$data['attrib'] = $attrib;
 		}
 		return $data;
 	}
@@ -239,6 +455,21 @@ class LitleAppModel extends AppModel {
 	*/
 	function exists() {
 		return false;
+	}
+	/**
+	* Overwrite of the query() function
+	* error handling
+	*/
+	function query() {
+		die("Sorry, bad method call on {$this->alias}");
+	}
+	/**
+	* Helper shortcut for commonly used number_format() call
+	* @param mixed $number
+	* @return string $formatted_number
+	*/
+	function num($number) {
+		return number_format($number, 0, '.', '');
 	}
 	/**
 	* Order Sources Values

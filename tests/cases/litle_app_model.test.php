@@ -52,9 +52,15 @@ class LitleAppModelTestCase extends AppTestCase {
 		);
 	public $test1 = array(
 			'reportGroup' => '1',
-			'orderSource' => 'ecommerce',
 			'orderId' => '1',
 			'amount' => 125,
+			'orderSource' => 'ecommerce',
+			'card' => array (
+				'type' => 'VI',
+				'number' => '4457010000000009',
+				'expDate' => '0112',
+				'cardValidationNum' => '349',
+				),
 			'billToAddress' => array (
 				'name' => 'John Smith',
 				'addressLine1' => '1 Main Street',
@@ -63,19 +69,13 @@ class LitleAppModelTestCase extends AppTestCase {
 				'zip' => '01803-3747',
 				'country' => 'US',
 				),
-			'card' => array (
-				'type' => 'VI',
-				'number' => '4457010000000009',
-				'expDate' => '0112',
-				'cardValidationNum' => '349',
-				),
 			'customBilling' => array (
-				'descriptor' => 'abc*ABC Company, LLC',
 				'phone' => '8888888888',
+				'descriptor' => 'abc*ABC Company, LLC',
 				),
 			'attrib' => array (
-				'reportGroup' => 'test',
 				'id' => 1320253459,
+				'reportGroup' => 'test',
 				),
 			);
 	protected $_testsToRun = array();
@@ -126,6 +126,31 @@ class LitleAppModelTestCase extends AppTestCase {
 		$uid = 'something else';
 		$this->LitleAppModel->config(compact('uid'));
 		$this->assertIdentical($this->config['uid'], $uid);
+	}
+	/**
+	* Validate orderFields functionality
+	*/
+	function testOrderFields() {
+		$response = $expected = $data = $this->test1;
+		$this->AssertEqual(json_encode($response), json_encode($expected));
+		$this->__deep_ksort($response);
+		$this->AssertNotEqual(json_encode($response), json_encode($expected));
+		$this->__deep_ksort($data);
+		$response = $this->LitleAppModel->orderFields($data, 'sale');
+		$this->AssertEqual(json_encode($response), json_encode($expected));
+		// shuffle more
+		$card = $data['card'];
+		unset($data['card']);
+		$number = $card['number'];
+		unset($card['number']);
+		$card['number'] = $number;
+		$data['card'] = $card;
+		$amount = $data['amount'];
+		unset($data['amount']);
+		$data['amount'] = $amount;
+		$this->AssertNotEqual(json_encode($data), json_encode($expected));
+		$response = $this->LitleAppModel->orderFields($data, 'sale');
+		$this->AssertEqual(json_encode($response), json_encode($expected));
 	}
 	/**
 	* Validate the translateFields

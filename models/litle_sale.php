@@ -83,27 +83,28 @@ class LitleSale extends LitleAppModel {
 		'currency_code' => array('type' => 'string', 'length' => '3', 'options' => array('AUD', 'CAD', 'CHF', 'DKK', 'EUR', 'GBP', 'HKD', 'JPY', 'NOK', 'NZD', 'SEK', 'SGD', 'USD')),
 		);
 	/**
+	* These fields are submitted in a saleResponse from Litle 
+	* @var array
+	*/
+	public $_schema_response = array(
+		'litleTxnId' => array('type' => 'string', 'length' => '25', 'comment' => 'litle\'s unique transaction id from response'),
+		'response' => array('type' => 'integer', 'length' => '3', 'comment' => 'response code'),
+		'responseTime' => array('type' => 'datetime'), 
+		'message' => array('type' => 'string', 'length' => '512', 'comment' => 'brief definition of the response code'),
+		); 
+	/**
 	* beforeSave reconfigures save inputs for "sale" transactions
 	* assumes LitleSale->data exists and has the details for the save()
 	* @param array $options optional extra litle config data
 	* @return array $response
 	*/
 	function beforeSave($options=array()) {
+		parent::beforeSave($options);
 		// TODO: use token or use card <<?
 		$config = set::merge($this->config, $options);
 		$errors = array();
 		// setup defaults so elements are in the right order.
-		$data_default = array(
-			// attrib
-			'id' => null,
-			'reportGroup' => null,
-			'customerId' => null,
-			// child
-			'orderId' => null,
-			'amount' => null,
-			'orderSource' => null,
-			);
-		$data = $data_raw = set::merge($data_default, $this->data[$this->alias]);
+		$data = $this->data[$this->alias];
 		$data = $this->translateFields($data, 'sale');
 		$data = $this->assignDefaults($data, 'sale');
 		if ($config['auto_orderId_if_missing'] && (!isset($data['orderId']) || empty($data['orderId']))) {
@@ -137,23 +138,19 @@ class LitleSale extends LitleAppModel {
 		// the transaction_id is used to determine duplicate transactions
 		if ($config['auto_id_if_missing'] && (!isset($data['auto_id_if_missing']) || empty($data['auto_id_if_missing']))) {
 			if (isset($config['duplicate_window_in_seconds']) && !empty($config['duplicate_window_in_seconds'])) {
-				$data['id'] = $data['orderId'].'-'.ceil(time() / $config['duplicate_window_in_seconds']);
+				$data['id'] = $this->num($data['orderId']).'-'.ceil(time() / $config['duplicate_window_in_seconds']);
 			} else {
-				$data['id'] = $data['orderId'].'-'.time();
+				$data['id'] = $this->num($data['orderId']).'-'.time();
 			}
 		}
-		// include only allowed fields (must be defined in the schema)
-		$stripped_data_keys = array_diff(array_keys($data), array_keys($this->_schema));
-		$data = array_intersect_key($data, $this->_schema);
 		// prep sale element attributes
 		$reportGroup = (isset($data['reportGroup']) ? $data['reportGroup'] : 'unspecified');
 		$customerId = (isset($data['customerId']) ? $data['customerId'] : 0);
 		$id = (isset($data['id']) ? $data['id'] : time());
-		$saleAttributes = compact('reportGroup', 'customerId', 'id');
-		$data = array_diff_key($data, $saleAttributes);
-		$data['root'] = 'sale|'.json_encode($saleAttributes);
+		$rootAttributes = compact('id', 'customerId', 'reportGroup');
+		$data = $this->finalizeFields($data, 'sale', $rootAttributes);
 		$this->data = array($this->alias => $data);
-		// verfiy on errors
+		// verfiy fail on errors
 		if (!empty($errors)) {
 			$status = 'failed';
 			$this->lastRequest = compact('status', 'errors', 'data', 'data_raw');
@@ -174,9 +171,56 @@ class LitleSale extends LitleAppModel {
 			return false;
 		}
 		extract($this->lastRequest);
-		echo dumpthis($response_array);
-		$this->lastRequest = compact('status', 'transaction_id', 'errors', 'data_json', 'data', 'response_array', 'response_raw');
+		if (isset($response_array['SaleResponse'])) {
+			$response_array = set::flatten($response_array['SaleResponse']);
+		}
+		extract($response_array);
+		$this->id = $transaction_id = (!empty($litleTxnId) ? $litleTxnId : 0);
+		if (empty($transaction_id)) {
+			$errors[] = "Missing transaction_id (litleTxnId)";
+		}
+		if ($response!="000" && $response!="0") {
+			$errors[] = "Error: {$message}";
+		}
+		if (!empty($errors)) {
+			$status = "error";
+		}
+		$this->lastRequest = compact('status', 'transaction_id', 'message', 'response', 'errors', 'data_json', 'data', 'response_array', 'response_raw');
 		return true;
+	}
+	/**
+	* Overwrite of the delete function
+	* Performs a Void, and if that fails, tries to Credit
+	*/
+	function delete($transaction_id) {
+		$this->lastRequest = array();
+		$errors = array();
+		if (empty($transaction_id) || !is_numeric($transaction_id)) {
+			$status = 'failed';
+			$errors[] = "Invalid or missing transaction_id";
+			$this->lastRequest = compact('status', 'errors', 'transaction_id');
+			return false;
+		}
+		App::import('Model', 'Litle.LitleVoid');
+		$LitleVoid =& ClassRegistry::init('Litle.LitleVoid');
+		$saved = $LitleVoid->save(array('litleTxnId' => $transaction_id));
+		$this->log[] = $LitleVoid->log;
+		$this->errors[] = $LitleVoid->errors;
+		$this->lastRequest = $LitleVoid->lastRequest;
+		if ($this->lastRequest['status']=='good') {
+			return true;
+		}
+		// now do a credit (no amount = full)
+		App::import('Model', 'Litle.LitleCredit');
+		$LitleCredit =& ClassRegistry::init('Litle.LitleCredit');
+		$LitleCredit->save(array('litleTxnId' => $transaction_id));
+		$this->log[] = $LitleCredit->lastRequest;
+		$this->lastRequest = $LitleCredit->lastRequest;
+		if ($this->lastRequest['status']=='good') {
+			return true;
+		}
+		// neither the credit nor the void worked...
+		return false;
 	}
 }
 ?>
