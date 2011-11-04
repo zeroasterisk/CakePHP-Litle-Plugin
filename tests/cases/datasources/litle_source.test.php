@@ -5,7 +5,7 @@ App::import('Datasource', 'litle.LitleSource');
 App::import('Model', 'litle.LitleTransaction');
 App::import('Lib', 'Templates.AppTestCase');
 class LitleSourceTestCase extends AppTestCase {
-	
+
 	public $plugin = 'app';
 	public $fixtures = array();
 	public $configs_for_datasource = array(
@@ -104,10 +104,10 @@ class LitleSourceTestCase extends AppTestCase {
 	* @return void
 	* @access public
 	*/
-	function startTest(){	
+	function startTest(){
 		$this->LitleSource = new LitleSource($this->configs_for_datasource);
 	}
-	
+
 	/**
 	* End Test callback
 	*
@@ -120,7 +120,7 @@ class LitleSourceTestCase extends AppTestCase {
 		unset($this->LitleSource);
 		ClassRegistry::flush();
 	}
-	
+
 	/**
 	* Validate the plugin setup
 	*/
@@ -265,7 +265,7 @@ class LitleSourceTestCase extends AppTestCase {
 		$response_check = $response;
 		unset($response_check['response_array']);
 		$this->assertEqual($response_check, $expected);
-		
+
 		$response_xml = str_replace(array("\n", "	"), '', '
 			<litleOnlineResponse version="8.7" xmlns="http://www.litle.com/schema" response="1" message="System Error - Call Litle &amp; Co.">
 				'.$sale_response_xml.'

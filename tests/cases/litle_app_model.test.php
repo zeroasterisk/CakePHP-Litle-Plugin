@@ -55,12 +55,6 @@ class LitleAppModelTestCase extends AppTestCase {
 			'orderId' => '1',
 			'amount' => 125,
 			'orderSource' => 'ecommerce',
-			'card' => array (
-				'type' => 'VI',
-				'number' => '4457010000000009',
-				'expDate' => '0112',
-				'cardValidationNum' => '349',
-				),
 			'billToAddress' => array (
 				'name' => 'John Smith',
 				'addressLine1' => '1 Main Street',
@@ -68,6 +62,12 @@ class LitleAppModelTestCase extends AppTestCase {
 				'state' => 'MA',
 				'zip' => '01803-3747',
 				'country' => 'US',
+				),
+			'card' => array (
+				'type' => 'VI',
+				'number' => '4457010000000009',
+				'expDate' => '0112',
+				'cardValidationNum' => '349',
 				),
 			'customBilling' => array (
 				'phone' => '8888888888',
@@ -174,6 +174,15 @@ class LitleAppModelTestCase extends AppTestCase {
 		// now lets mix-and-match, with overwrites (explicit path takes precidence
 		$data['card']['number'] = $this->test1['card']['number'];
 		$data["card.number"] = 'bad value';
+		$response = $this->LitleAppModel->translateFields($data, 'sale');
+		$this->__deep_ksort($response);
+		$this->AssertEqual($response, $expected);
+		// now lets pass in some extra dot suffixes
+		$data = $expected;
+		$data['custom.extra1'] = $expected['custom']['extra1'] = 'found';
+		$data['custom.extra2.super.nested'] = $expected['custom']['extra2']['super']['nested'] = 'found';
+		$data['custom.extra2.super.nested'] = $expected['custom']['extra2']['super']['nested'] = 'found';
+		$data["card.number"] = 'bad value'; // shouldn't overwrite existing final paths
 		$response = $this->LitleAppModel->translateFields($data, 'sale');
 		$this->__deep_ksort($response);
 		$this->AssertEqual($response, $expected);

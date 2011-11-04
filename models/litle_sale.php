@@ -63,9 +63,9 @@ class LitleSale extends LitleAppModel {
 		'enhancedData' => array('type' => 'blob'),
 		// extra field to create root level element
 		'root' => array('type' => 'blob'),
-		); 
+		);
 	/**
-	* These fields are commonly used as extras on this model 
+	* These fields are commonly used as extras on this model
 	* should be parsed into containers before _schema validation on save
 	* @var array
 	*/
@@ -83,15 +83,15 @@ class LitleSale extends LitleAppModel {
 		'currency_code' => array('type' => 'string', 'length' => '3', 'options' => array('AUD', 'CAD', 'CHF', 'DKK', 'EUR', 'GBP', 'HKD', 'JPY', 'NOK', 'NZD', 'SEK', 'SGD', 'USD')),
 		);
 	/**
-	* These fields are submitted in a saleResponse from Litle 
+	* These fields are submitted in a saleResponse from Litle
 	* @var array
 	*/
 	public $_schema_response = array(
 		'litleTxnId' => array('type' => 'string', 'length' => '25', 'comment' => 'litle\'s unique transaction id from response'),
 		'response' => array('type' => 'integer', 'length' => '3', 'comment' => 'response code'),
-		'responseTime' => array('type' => 'datetime'), 
+		'responseTime' => array('type' => 'datetime'),
 		'message' => array('type' => 'string', 'length' => '512', 'comment' => 'brief definition of the response code'),
-		); 
+		);
 	/**
 	* beforeSave reconfigures save inputs for "sale" transactions
 	* assumes LitleSale->data exists and has the details for the save()
@@ -111,7 +111,7 @@ class LitleSale extends LitleAppModel {
 			$data['orderId'] = time();
 		}
 		$requiredFields = array('reportGroup', 'orderId', 'amount', 'orderSource');
-		foreach ( $requiredFields as $key ) { 
+		foreach ( $requiredFields as $key ) {
 			if (!array_key_exists($key, $data) || empty($data[$key])) {
 				$errors[] = "Missing required field [{$key}]";
 			}
@@ -124,15 +124,7 @@ class LitleSale extends LitleAppModel {
 			$requiredFields = array('number', 'expDate');
 			$foundRequiredFields = array_intersect_key($data, $foundPayment);
 			if (empty($foundRequiredFields)) {
-				$errors[] = "Missing required payment fields";
-			} else {
-				foreach ( $foundRequiredFields as $paymentKey => $paymentData ) { 
-					foreach ( $paymentData as $key => $val ) { 
-						if (empty($val)) {
-							$errors[] = "Missing required payment field {$paymentKey}.{$key} (empty)";
-						}
-					}
-				}
+				$errors[] = "Missing required Sale: payment fields";
 			}
 		}
 		// the transaction_id is used to determine duplicate transactions
@@ -159,8 +151,8 @@ class LitleSale extends LitleAppModel {
 		return true;
 	}
 	/**
-	* afterSave parses results and verifies status for "sale" transactions
-	* assumes LitleSale->lastRequest exists and has the details for the LitleSource->_re
+	* afterSave parses results and verifies status for this transaction
+	* assumes LitleSale->lastRequest exists and has the details for this request
 	* @param array $options optional extra litle config data
 	* @return array $response
 	*/
@@ -185,7 +177,8 @@ class LitleSale extends LitleAppModel {
 		if (!empty($errors)) {
 			$status = "error";
 		}
-		$this->lastRequest = compact('status', 'transaction_id', 'message', 'response', 'errors', 'data_json', 'data', 'response_array', 'response_raw');
+		// todo: parse recycle response
+		$this->lastRequest = compact($this->requestVars);
 		return true;
 	}
 	/**

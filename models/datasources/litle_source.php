@@ -2,7 +2,7 @@
 /**
 * Plugin datasource for "Litle" API.
 *
-* The datasource takes care of 
+* The datasource takes care of
 *	converting array parameters into XML
 *	doing the API request
 *	converting response XML into an array
@@ -73,7 +73,7 @@ class LitleSource extends DataSource {
 			'config'.DS.'litle_config.php',
 			'config'.DS.'litle.php',
 			);
-		foreach ( $paths as $path ) { 
+		foreach ( $paths as $path ) {
 			if (!class_exists('LITLE_CONFIG')) {
 				App::import(array('type' => 'File', 'name' => 'Litle.LITLE_CONFIG', 'file' => $path));
 			}
@@ -213,7 +213,7 @@ class LitleSource extends DataSource {
 			$litleOnlineRequestKey = $data['litleOnlineRequest'];
 			unset($data['litleOnlineRequest']);
 		} else {
-			$attrib = array_intersect_key($config, array('version' => 0, 'url_xmlns' => 0, 'merchantId' => 0)); 
+			$attrib = array_intersect_key($config, array('version' => 0, 'url_xmlns' => 0, 'merchantId' => 0));
 			$litleOnlineRequestKey = 'litleOnlineRequest|'.json_encode($attrib);
 		}
 		// authentication
@@ -230,7 +230,7 @@ class LitleSource extends DataSource {
 			$root = $data['root'];
 			unset($data['root']);
 		} else {
-			$root = (isset($Model->alias) ? $Model->alias : null); 
+			$root = (isset($Model->alias) ? $Model->alias : null);
 		}
 		// re-order and nest
 		if (is_string($root) && !empty($root)) {
@@ -247,7 +247,7 @@ class LitleSource extends DataSource {
 		/* */
 		return $xml;
 	}
-	
+
 	/**
 	* Parse the response data from a post to authorize.net
 	* @param string $response
@@ -310,18 +310,22 @@ class LitleSource extends DataSource {
 	* @return mixed $response
 	*/
 	public function __request($data, &$Model=null) {
-		$data_json = null;
 		$errors = array();
 		if (empty($data)) {
 			$errors[] = "Missing input data";
+			$request_raw = '';
 		} elseif (is_array($data)) {
-			$data_json = json_encode($data);
-			$data = $this->prepareApiData($data, $Model);
+			$request_raw = $this->prepareApiData($data, $Model);
+		} elseif (is_string($data)) {
+			$request_raw = $data;
+		} else {
+			$errors[] = "Unknown input data type";
+			$request_raw = '';
 		}
 		if (empty($errors)) {
 			$this->Http->reset();
 			$url = $this->config['url'];
-			$response_raw = $this->Http->post($url, $data, array(
+			$response_raw = $this->Http->post($url, $request_raw, array(
 				'header' => array(
 					'Connection' => 'close',
 					'User-Agent' => 'CakePHP Litle Plugin v.'.$this->config['version'],
@@ -335,8 +339,12 @@ class LitleSource extends DataSource {
 			$response = $this->parseResponse($response_raw);
 			extract($response);
 		}
+		// look for special values
+		$transaction_id = $response_array['transaction_id'] = $this->array_find("litleTxnId", $response_array);
+		$litleToken = $response_array['litleToken'] = $this->array_find("litleToken", $response_array);
+		$type = $response_array['type'] = str_replace('litle', '', strtolower($Model->alias));
 		// compact response array
-		$return = compact('status', 'transaction_id', 'errors', 'data_json', 'data', 'response_array', 'response_raw');
+		$return = compact('type', 'status', 'transaction_id', 'litleToken', 'errors', 'data', 'request_raw', 'response_array', 'response_raw', 'url');
 		// assign to model if set
 		if (is_object($Model)) {
 			$Model->lastRequest = $return;
@@ -344,11 +352,28 @@ class LitleSource extends DataSource {
 			if (isset($Model->log) && is_array($Model->log)) {
 				$Model->log[] = $return;
 			}
-			if (method_exists($Model, 'logRequest')) {
-				$Model->logRequest($return);
-			}
 		}
 		return $return;
+	}
+	/**
+	* Recursivly look through an array to find a specific key
+	* @param string $needle key to find in the array
+	* @param array $haystack array to search through
+	* @return mixed $output
+	*/
+	function array_find($needle=null, $haystack=null) {
+		if (array_key_exists($needle, $haystack)) {
+			return $haystack[$needle];
+		}
+		foreach ( $haystack as $value ) {
+			if (is_array($value)) {
+				$found = $this->array_find($needle, $value);
+				if ($found!==null) {
+					return $found;
+				}
+			}
+		}
+		return null;
 	}
 }
 ?>

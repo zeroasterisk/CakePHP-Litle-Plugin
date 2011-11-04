@@ -17,12 +17,12 @@
 	debug($this->LitleSale->lastRequest);
 	$transaction_id = $this->LitleSale->id;
 	# more: $transaction_id == $this->LitleSale->lastRequest['transaction_id'];
-	
+
 	# and now to credit that sale:
 	$creditWorked = $this->LitleCredit->save(array(
 		'litleTxnId' => $transaction_id,
 	));
-	
+
 	# or you can us a helper on the Sale model
 	$creditWorked = $this->LitleSale->delete($transaction_id);
 */
@@ -62,18 +62,18 @@ class LitleCredit extends LitleAppModel {
 		'amount' => array('type' => 'integer', 'length' => '8', 'comment' => 'amount to credit, optional, if empty full amount is credited'),
 		// extra field to create root level element
 		'root' => array('type' => 'blob'),
-		); 
+		);
 	/**
-	* These fields are submitted in a saleResponse from Litle 
+	* These fields are submitted in a saleResponse from Litle
 	* @var array
 	*/
 	public $_schema_response = array(
 		'litleTxnId' => array('type' => 'string', 'length' => '25', 'comment' => 'litle\'s unique transaction id from response'),
 		'response' => array('type' => 'integer', 'length' => '3', 'comment' => 'response code'),
-		'responseTime' => array('type' => 'datetime'), 
+		'responseTime' => array('type' => 'datetime'),
 		'message' => array('type' => 'string', 'length' => '512', 'comment' => 'brief definition of the response code'),
 		'postDate' => array('type' => 'datetime'),
-		); 
+		);
 	/**
 	* beforeSave reconfigures save inputs for "sale" transactions
 	* assumes LitleSale->data exists and has the details for the save()
@@ -89,7 +89,7 @@ class LitleCredit extends LitleAppModel {
 		$data = $this->translateFields($data, 'credit');
 		$data = $this->assignDefaults($data, 'credit');
 		$requiredFields = array('reportGroup', 'litleTxnId');
-		foreach ( $requiredFields as $key ) { 
+		foreach ( $requiredFields as $key ) {
 			if (!array_key_exists($key, $data) || empty($data[$key])) {
 				$errors[] = "Missing required field [{$key}]";
 			}
@@ -118,8 +118,8 @@ class LitleCredit extends LitleAppModel {
 		return true;
 	}
 	/**
-	* afterSave parses results and verifies status for "sale" transactions
-	* assumes LitleSale->lastRequest exists and has the details for the LitleSource->_re
+	* afterSave parses results and verifies status for this transaction
+	* assumes LitleSale->lastRequest exists and has the details for this request
 	* @param array $options optional extra litle config data
 	* @return array $response
 	*/
@@ -147,7 +147,7 @@ class LitleCredit extends LitleAppModel {
 		if (!empty($errors)) {
 			$status = "error";
 		}
-		$this->lastRequest = compact('status', 'transaction_id', 'message', 'response', 'errors', 'data_json', 'data', 'response_array', 'response_raw');
+		$this->lastRequest = compact($this->requestVars);
 		return true;
 	}
 }

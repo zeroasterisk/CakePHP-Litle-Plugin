@@ -40,9 +40,9 @@ class LitleAppModel extends AppModel {
 	* Elements require specific ordering, even for optional children :(
 	* So we have to define the structure, merge in values, strip out blanks
 	* handled in beforeSave()
-	* NOTE: we "should" be able to just use the schema for the core elements, 
-	*   but all the nested elements are another matter... 
-	*   seemed cleaner to just re-specify here. 
+	* NOTE: we "should" be able to just use the schema for the core elements,
+	*   but all the nested elements are another matter...
+	*   seemed cleaner to just re-specify here.
 	* @param array $templates
 	*/
 	public $templates = array(
@@ -63,9 +63,9 @@ class LitleAppModel extends AppModel {
 			'billToAddress' => null,
 			'shipToAddress' => null,
 			'card' => null,
-			'paypage' => null, 
-			'token' => null, 
-			'paypal' => null, 
+			'paypage' => null,
+			'token' => null,
+			'paypal' => null,
 			'billMeLaterRequest' => null,
 			'cardholderAuthentication' => null,
 			'customBilling' => null,
@@ -184,6 +184,12 @@ class LitleAppModel extends AppModel {
 			'detailTax' => null,
 			),
 		);
+
+	/**
+	* Standard variables to be passed around with a request
+	* @param array $requestVars
+	*/
+	public $requestVars = array('type', 'status', 'response', 'message', 'transaction_id', 'litleToken', 'errors', 'data', 'request_raw', 'response_array', 'response_raw', 'url');
 	/**
 	* Updates config from: app/config/litle_config.php
 	* Sets up $this->logModel
@@ -207,7 +213,7 @@ class LitleAppModel extends AppModel {
 				'config'.DS.'litle_config.php',
 				'config'.DS.'litle.php',
 				);
-			foreach ( $paths as $path ) { 
+			foreach ( $paths as $path ) {
 				if (!class_exists('LITLE_CONFIG')) {
 					App::import(array('type' => 'File', 'name' => 'Litle.LITLE_CONFIG', 'file' => $path));
 				}
@@ -248,10 +254,23 @@ class LitleAppModel extends AppModel {
 		return $db->config;
 	}
 	/**
+	* Overwrite of the save method
+	* All work is really done by
+	* beforeSave() preps the data
+	* parent::save() --> LitleSource does the API request
+	* afterSave() parses the data
+	* logRequest() (optional) logs to
+	*/
+	function save($data) {
+		$return = parent::save($data);
+		$this->logRequest();
+		return $return;
+	}
+	/**
 	* beforeSave clears out $this->lastRequest
 	*/
 	function beforeSave($options=array()) {
-		$this->lastRequest = array();
+		$this->lastRequest = $this->errors = array();
 		return parent::beforeSave($options);
 	}
 	/**
@@ -279,12 +298,37 @@ class LitleAppModel extends AppModel {
 		if (!empty($errors)) {
 			$status = "error";
 		}
-		$this->lastRequest = compact('status', 'transaction_id', 'errors', 'data_json', 'data', 'response_array', 'response_raw');
+		$this->lastRequest = compact($this->requestVars);
 		return true;
 	}
 	/**
+	* Logs the last request, if config includes a model to log with
+	* This method is called within the afterSave() at the end
+	* Can have method "logLitleRequest" as in: ModelName->logLitleRequest($lastRequest);
+	* Can have method "logRequest" as in: ModelName->logRequest($lastRequest);
+	* Can have method "save" as in: ModelName->save($lastRequest);
+	* @return mixed $saved or false
+	*/
+	function logRequest() {
+		if (empty($this->lastRequest)) {
+			return false;
+		}
+		if (isset($this->config['logModel']) && !empty($this->config['logModel'])) {
+			App::import('Model', $this->config['logModel']);
+			$LogModel =& ClassRegistry::init($this->config['logModel']);
+			if (method_exists($LogModel, 'logLitleRequest')) {
+				return $LogModel->logLitleRequest($this->lastRequest);
+			} elseif (method_exists($LogModel, 'logRequest')) {
+				return $LogModel->logRequest($this->lastRequest);
+			} elseif (method_exists($LogModel, 'save')) {
+				return $LogModel->save($this->lastRequest);
+			}
+		}
+		return false;
+	}
+	/**
 	* Re-arrange fields which coule be passed in a single-dim array
-	* need to extend this function? 
+	* need to extend this function?
 	* you can use the config => array("field_map" => array($new_key => $old_keys))
 	* perhaps write your own version before you call the plugin
 	* @param array $data
@@ -304,7 +348,7 @@ class LitleAppModel extends AppModel {
 				if (is_string($old_keys)) {
 					$old_keys = explode(',', $old_keys);
 				}
-				foreach ( $old_keys as $old_key ) { 
+				foreach ( $old_keys as $old_key ) {
 					if (!array_key_exists($new_key, $data) && array_key_exists($old_key, $data)) {
 						$data[$new_key] = $data[$old_key];
 						unset($data[$old_key]);
@@ -313,21 +357,18 @@ class LitleAppModel extends AppModel {
 			}
 		}
 		// translate nested keys
-		foreach ( $data as $key => $val ) { 
+		$nested = array();
+		foreach ( $data as $key => $val ) {
 			if (strpos($key, '.')!==false) {
-				$keyParts = explode('.', $key);
-				$keyPrefix = array_shift($keyParts);
-				$keySuffix = implode('.', $keyParts);
-				if (!isset($data[$keyPrefix][$keySuffix])) {
-					$data[$keyPrefix][$keySuffix] = $data[$key];
-				}
+				$nested = set::insert($nested, $key, $val);
 				unset($data[$key]);
 			}
 		}
+		$data = Set::pushDiff($data, $nested);
 		return $data;
 	}
 	/**
-	* You can assign default values for ANY API interaction (after the translation) 
+	* You can assign default values for ANY API interaction (after the translation)
 	* @param array $data
 	* @param string $style
 	* @return array $data
@@ -363,6 +404,8 @@ class LitleAppModel extends AppModel {
 		// include only allowed fields (must be defined in the schema)
 		$stripped_data_keys = array_diff(array_keys($data), array_keys($this->_schema));
 		$data = array_intersect_key($data, $this->_schema);
+		// clean commonly mistaken values
+		$data = $this->cleanValues($data);
 		// reorder based on templates (also strips empties)
 		$data = $this->orderFields($data, $templateKey);
 		if (!empty($rootAttributes)) {
@@ -390,7 +433,7 @@ class LitleAppModel extends AppModel {
 			$data = set::merge($this->templates[$templateKey], $data);
 		}
 		// recursivly act on all child nodes
-		foreach ( $data as $key => $val ) { 
+		foreach ( $data as $key => $val ) {
 			if (array_key_exists($key, $this->templates) && is_array($val)) {
 				$data[$key] = $this->orderFields($val, $key);
 			}
@@ -402,6 +445,23 @@ class LitleAppModel extends AppModel {
 			$attrib = $data['attrib'];
 			unset($data['attrib']);
 			$data['attrib'] = $attrib;
+		}
+		return $data;
+	}
+	/**
+	* Just to be safe, we are going to clean values which have known, easy to fix, limitations
+	* @param mixed $data
+	* @return mixed $data
+	*/
+	function cleanValues($data) {
+		if (is_array($data)) {
+			foreach ( $data as $key => $val ) {
+				if (in_array($key, array('expDate', 'amount', 'number'))) {
+					$data[$key] = preg_replace('#[^0-9]#', '', $val);
+				} elseif (is_array($val)) {
+					$data[$key] = $this->cleanValues($val);
+				}
+			}
 		}
 		return $data;
 	}
@@ -424,32 +484,6 @@ class LitleAppModel extends AppModel {
 		return $db->parseResponse($xml);
 	}
 	/**
-	* Log a request (on a specifed model, defined in configuration)
-	* @param array $lastRequest
-	* @return mixed $save_response or null
-	*/
-	function logRequest($lastRequest) {
-		if (!isset($this->logModel)) {
-			// initialize extras: transaction log model
-			if (!empty($this->config['logModel'])) {
-				if (App::import('model', $this->config['logModel'])) {
-					$this->logModel = ClassRegistry::init(array_pop(explode('.', $this->config['logModel'])));
-					if (isset($this->config['logModel.useTable']) && $this->config['logModel.useTable']!==null) {
-						$this->logModel->useTable = $this->config['logModel.useTable'];
-					}
-				}
-			}
-		}
-		if (empty($this->logModel) || !is_object($this->logModel)) {
-			return null;
-		}
-		if (class_exists($this->logModel, 'logRequest')) {
-			return $this->logModel->logRequest($this->lastRequest);
-		}
-		$this->logModel->create(false);
-		return $this->logModel->save($this->lastRequest);
-	}
-	/**
 	* Overwrite of the exists() function
 	* means everything is a create() / new
 	*/
@@ -469,7 +503,14 @@ class LitleAppModel extends AppModel {
 	* @return string $formatted_number
 	*/
 	function num($number) {
-		return number_format($number, 0, '.', '');
+		if (is_string($number) && is_numeric($number)) {
+			if (strpos('.', $number)!==false) {
+				return number_format(floatval($number), 0, '.', '');
+			} else {
+				return intval($number);
+			}
+		}
+		return $number;
 	}
 	/**
 	* Order Sources Values
@@ -487,5 +528,4 @@ class LitleAppModel extends AppModel {
 		'telephone' => 'The transaction is for a single telephone order.',
 		);
 }
-
 ?>
