@@ -1,5 +1,18 @@
 <?php
-
+/**
+* Plugin AppModel for "Litle" API.
+*
+* The LitleAppModel takes care of
+*	setting up beforeSave() to translate/default fields
+*	setting up afterSave() to translate/parse responses
+*	setting up logRequest() to log responses (if configured)
+*
+* @author Alan Blount <alan@zeroasterisk.com>
+* @link http://zeroasterisk.com
+* @copyright (c) 2011 Alan Blount
+* @license MIT License - http://www.opensource.org/licenses/mit-license.php
+*
+*/
 class LitleAppModel extends AppModel {
 	/**
 	* This model doesn't use a table
@@ -460,6 +473,8 @@ class LitleAppModel extends AppModel {
 					$data[$key] = preg_replace('#[^0-9]#', '', $val);
 				} elseif (is_array($val)) {
 					$data[$key] = $this->cleanValues($val);
+				} elseif (isset($this->_schema) && in_array($key, $this->_schema) && isset($this->_schema[$key]['length'])) {
+					$data[$key] = substr($data[$key], 0, $this->_schema[$key]['length']);
 				}
 			}
 		}
