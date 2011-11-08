@@ -12,16 +12,21 @@ Finally, add the following to ../config/database.php
 
     public $litle = array(
         'datasource' => 'Litle.LitleSource',
-        /* the rest of the conifugration is in config/litle_config.php */
+        /* the rest of the conifugration is in config/litle.php */
         );
 
 Configuration
 
 Edit: app/config/litle.php
 
-Log Model
-
 It's a good idea to log every API interaction, both what we sent and what we get back.
+
+    $config['Litle']['logModel'] = 'MyCustomLoggingModel';
+    $MyCustomLoggingModel->logLitleRequest($LitleSale->lastRequest); # else
+    //$MyCustomLoggingModel->logRequest($LitleSale->lastRequest); # else
+    //$MyCustomLoggingModel->save($LitleSale->lastRequest);
+    
+    # FYI: $lastRequest = compact('type', 'status', 'response', 'message', 'transaction_id', 'litleToken', 'errors', 'data', 'request_raw', 'response_array', 'response_raw', 'url');
 
 Features
 
