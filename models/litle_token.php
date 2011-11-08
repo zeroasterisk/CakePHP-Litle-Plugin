@@ -20,8 +20,17 @@ class LitleToken extends LitleAppModel {
 	* @var array
 	*/
 	public $_schema = array(
-		'account_number' => array('type' => 'integer'),
-		'token' => array('type' => 'integer'),
+		// sale attributes
+		'id' => array('type' => 'string', 'length' => '25', 'comment' => 'unique transaction id (determines duplicates)'),
+		'reportGroup' => array('type' => 'string', 'length' => '25', 'comment' => 'required attribute that defines the merchant sub-group'),
+		'customerId' => array('type' => 'string', 'length' => '25', 'comment' => 'required attribute that defines the merchant sub-group'),
+		// sale elements
+		'accountNumber' => array('type' => 'string', 'length' => '25', 'comment' => 'required'),
+		'echeckForToken' => array('type' => 'string', 'length' => '512', 'comment' => 'optional (alternative to accountNumber)'),
+		'paypageRegistrationId' => array('type' => 'string', 'length' => '512', 'comment' => 'optional (alternative to accountNumber)'),
+		'orderId' => array('type' => 'string', 'length' => '25', 'comment' => 'optional'),
+		// extra field to create root level element
+		'root' => array('type' => 'blob'),
 		);
 	/**
 	* Initially setup a token from an account number
@@ -32,7 +41,7 @@ class LitleToken extends LitleAppModel {
 	*/
 	public function register($account_number) {
 		$this->save(array('accountNumber' => $account_number));
-		if (isset($this->lastRequest['response_array']['litleToken'])) {
+		if (isset($this->lastRequest['response_array']['litleToken']) && substr($account_number, -4) == substr($this->lastRequest['response_array']['litleToken'], -4)) {
 			return $this->lastRequest['response_array']['litleToken'];
 		}
 		return 0;
@@ -55,7 +64,7 @@ class LitleToken extends LitleAppModel {
 		$customerId = (isset($data['customerId']) ? $data['customerId'] : 0);
 		$id = (isset($data['id']) ? $data['id'] : time());
 		$rootAttributes = compact('id', 'customerId', 'reportGroup');
-		$data = $this->finalizeFields($data, 'void', $rootAttributes);
+		$data = $this->finalizeFields($data, 'registerTokenRequest', $rootAttributes);
 		$this->data = array($this->alias => $data);
 		return true;
 	}

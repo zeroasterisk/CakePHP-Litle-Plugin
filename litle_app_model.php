@@ -196,6 +196,12 @@ class LitleAppModel extends AppModel {
 			'unitCost' => null,
 			'detailTax' => null,
 			),
+		'registerTokenRequest' => array(
+			'orderId' => null,
+			'accountNumber' => null,
+			'echeckForToken' => null,
+			'paypageRegistrationId' => null,
+			),
 		);
 
 	/**
@@ -416,6 +422,9 @@ class LitleAppModel extends AppModel {
 		}
 		// clear all null elements (recursivly, so do this after recusion)
 		$data = set::filter($data);
+		if (!is_array($data)) {
+			$data = array();
+		}
 		// shuffle attrib to the end
 		if (isset($data['attrib'])) {
 			$attrib = $data['attrib'];
