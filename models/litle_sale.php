@@ -3,7 +3,7 @@
 * Plugin model for "Litle Credit Card Sale Processing".
 *
 * @author Alan Blount <alan@zeroasterisk.com>
-* @link http://zeroasterisk.com
+* @link https://github.com/zeroasterisk/CakePHP-Litle-Plugin
 * @copyright (c) 2011 Alan Blount
 * @license MIT License - http://www.opensource.org/licenses/mit-license.php
 *
@@ -95,21 +95,17 @@ class LitleSale extends LitleAppModel {
 	/**
 	* beforeSave reconfigures save inputs for "sale" transactions
 	* assumes LitleSale->data exists and has the details for the save()
-	* @param array $options optional extra litle config data
+	* @param array $options
 	* @return array $response
 	*/
 	function beforeSave($options=array()) {
 		parent::beforeSave($options);
 		// TODO: use token or use card <<?
-		$config = set::merge($this->config, $options);
 		$errors = array();
 		// setup defaults so elements are in the right order.
 		$data = $this->data[$this->alias];
 		$data = $this->translateFields($data, 'sale');
 		$data = $this->assignDefaults($data, 'sale');
-		if ($config['auto_orderId_if_missing'] && (!isset($data['orderId']) || empty($data['orderId']))) {
-			$data['orderId'] = time();
-		}
 		$requiredFields = array('reportGroup', 'orderId', 'amount', 'orderSource');
 		foreach ( $requiredFields as $key ) {
 			if (!array_key_exists($key, $data) || empty($data[$key])) {
@@ -125,14 +121,6 @@ class LitleSale extends LitleAppModel {
 			$foundRequiredFields = array_intersect_key($data, $foundPayment);
 			if (empty($foundRequiredFields)) {
 				$errors[] = "Missing required Sale: payment fields";
-			}
-		}
-		// the transaction_id is used to determine duplicate transactions
-		if ($config['auto_id_if_missing'] && (!isset($data['auto_id_if_missing']) || empty($data['auto_id_if_missing']))) {
-			if (isset($config['duplicate_window_in_seconds']) && !empty($config['duplicate_window_in_seconds'])) {
-				$data['id'] = $this->num($data['orderId']).'-'.ceil(time() / $config['duplicate_window_in_seconds']);
-			} else {
-				$data['id'] = $this->num($data['orderId']).'-'.time();
 			}
 		}
 		// prep sale element attributes
@@ -153,7 +141,7 @@ class LitleSale extends LitleAppModel {
 	/**
 	* afterSave parses results and verifies status for this transaction
 	* assumes LitleSale->lastRequest exists and has the details for this request
-	* @param array $options optional extra litle config data
+	* @param array $options
 	* @return array $response
 	*/
 	function afterSave($created=null) {
@@ -196,16 +184,18 @@ class LitleSale extends LitleAppModel {
 		}
 		App::import('Model', 'Litle.LitleVoid');
 		$LitleVoid =& ClassRegistry::init('Litle.LitleVoid');
+		$LitleVoid->useDbConfig = 'litle';
 		$saved = $LitleVoid->save(array('litleTxnId' => $transaction_id));
 		$this->log[] = $LitleVoid->log;
 		$this->errors[] = $LitleVoid->errors;
 		$this->lastRequest = $LitleVoid->lastRequest;
-		if ($this->lastRequest['status']=='good') {
+		if (isset($this->lastRequest['status']) && $this->lastRequest['status']=='good') {
 			return true;
 		}
 		// now do a credit (no amount = full)
 		App::import('Model', 'Litle.LitleCredit');
 		$LitleCredit =& ClassRegistry::init('Litle.LitleCredit');
+		$LitleCredit->useDbConfig = 'litle';
 		$LitleCredit->save(array('litleTxnId' => $transaction_id));
 		$this->log[] = $LitleCredit->lastRequest;
 		$this->lastRequest = $LitleCredit->lastRequest;

@@ -8,7 +8,7 @@
 *	setting up logRequest() to log responses (if configured)
 *
 * @author Alan Blount <alan@zeroasterisk.com>
-* @link http://zeroasterisk.com
+* @link https://github.com/zeroasterisk/CakePHP-Litle-Plugin
 * @copyright (c) 2011 Alan Blount
 * @license MIT License - http://www.opensource.org/licenses/mit-license.php
 *
@@ -28,7 +28,7 @@ class LitleAppModel extends AppModel {
 	* This is a placeholder array for configuration (shared with LitleSource)
 	* @param array $config
 	*/
-	public $config = array();
+	static public $config = array();
 	/**
 	* This is a placeholder array for lastRequest
 	* @param array $lastRequest
@@ -204,67 +204,14 @@ class LitleAppModel extends AppModel {
 	*/
 	public $requestVars = array('type', 'status', 'response', 'message', 'transaction_id', 'litleToken', 'errors', 'data', 'request_raw', 'response_array', 'response_raw', 'url');
 	/**
-	* Updates config from: app/config/litle_config.php
-	* Sets up $this->logModel
-	* @param mixed $id
-	* @param string $table
-	* @param mixed $ds
+	* Setup & establish HttpSocket.
+	* @param config an array of configuratives to be passed to the constructor to overwrite the default
 	*/
-	public function __construct($id = false, $table = null, $ds = null) {
-		parent::__construct($id, $table, $ds);
-		ConnectionManager::create($this->useDbConfig, array('setup' => $this->name));
-		$db =& ConnectionManager::getDataSource($this->useDbConfig);
-		if (!method_exists($db, 'config')) {
-			$this->useDbConfig = 'litle';
-			ConnectionManager::create($this->useDbConfig);
-			$db =& ConnectionManager::getDataSource($this->useDbConfig);
+	public function __construct($config=array()) {
+		parent::__construct($config);
+		if (!class_exists('LitleUtil')) {
+			App::import('Lib', 'Litle.LitleUtil');
 		}
-		if (!method_exists($db, 'config')) {
-			$paths = array(
-				APP.'config'.DS.'litle_config.php',
-				APP.'config'.DS.'litle.php',
-				'config'.DS.'litle_config.php',
-				'config'.DS.'litle.php',
-				);
-			foreach ( $paths as $path ) {
-				if (!class_exists('LITLE_CONFIG')) {
-					App::import(array('type' => 'File', 'name' => 'Litle.LITLE_CONFIG', 'file' => $path));
-				}
-			}
-			$config = array();
-			if (class_exists('LITLE_CONFIG')) {
-				$LITLE_CONFIG = new LITLE_CONFIG();
-				if (isset($LITLE_CONFIG->config)) {
-					$config = set::merge($config, $LITLE_CONFIG->config);
-				}
-			}
-		}
-		if (!method_exists($db, 'config')) {
-			$_this =& ConnectionManager::getInstance();
-			print_r($_this->config);
-			print_r($_this->config);
-			print_r(array_keys($_this->_dataSources));
-			print_r(array_keys($_this->_connectionsEnum));
-			print_r(array(
-				'LITLE_CONFIG class exists' => class_exists('LITLE_CONFIG'),
-				'LitleSource class exists' => class_exists('LitleSource'),
-				));
-			die("Error: can not access datasource->config() from within LitleAppModel");
-		}
-		$this->config = $db->config();
-		return true;
-	}
-	/**
-    * Simple function to return the $config array
-    * @param array $config if set, merge with existing array
-    * @return array $config
-    */
-	public function config($config = array()) {
-		$db =& ConnectionManager::getDataSource($this->useDbConfig);
-		if (!empty($config) && is_array($config)) {
-			$db->config($config);
-		}
-		return $db->config;
 	}
 	/**
 	* Overwrite of the save method
@@ -326,9 +273,10 @@ class LitleAppModel extends AppModel {
 		if (empty($this->lastRequest)) {
 			return false;
 		}
-		if (isset($this->config['logModel']) && !empty($this->config['logModel'])) {
-			App::import('Model', $this->config['logModel']);
-			$LogModel =& ClassRegistry::init($this->config['logModel']);
+		$logModel = LitleUtil::getConfig('logModel');
+		if (!empty($logModel) && is_string($logModel)) {
+			App::import('Model', $logModel);
+			$LogModel =& ClassRegistry::init($logModel);
 			if (method_exists($LogModel, 'logLitleRequest')) {
 				return $LogModel->logLitleRequest($this->lastRequest);
 			} elseif (method_exists($LogModel, 'logRequest')) {
@@ -353,11 +301,10 @@ class LitleAppModel extends AppModel {
 			$data = array_merge($data, $data[$this->alias]);
 			unset($data[$this->alias]);
 		}
-		$config = $this->config;
-		//echo dumpthis($config);
 		// translate based on field_map configuration
-		if (isset($config['field_map']) && is_array($config['field_map']) && !empty($config['field_map'])) {
-			foreach ( $config['field_map'] as $new_key => $old_keys ) {
+		$field_map = LitleUtil::getConfig('field_map');
+		if (is_array($field_map)) {
+			foreach ( $field_map as $new_key => $old_keys ) {
 				if (is_string($old_keys)) {
 					$old_keys = explode(',', $old_keys);
 				}
@@ -391,15 +338,31 @@ class LitleAppModel extends AppModel {
 			$data = array_merge($data, $data[$this->alias]);
 			unset($data[$this->alias]);
 		}
-		$config = $this->config;
-		if (isset($config['defaults'][$style]) && is_array($config['defaults'][$style]) && !empty($config['defaults'][$style])) {
-			$data = set::merge($config['defaults'][$style], $data);
+		$defaults = LitleUtil::getConfig('defaults');
+		if (isset($defaults[$style]) && is_array($defaults[$style]) && !empty($defaults[$style])) {
+			$data = set::merge($defaults[$style], $data);
 		}
 		if (isset($this->_schema)) {
 			foreach ( array_keys($this->_schema) as $key ) {
-				if ((!isset($data[$key]) || empty($data[$key])) && array_key_exists($key, $config['defaults']) && !is_array($config['defaults'][$key])) {
-					$data[$key] = $config['defaults'][$key];
+				if ((!isset($data[$key]) || empty($data[$key])) && array_key_exists($key, $defaults) && !is_array($defaults[$key])) {
+					$data[$key] = $defaults[$key];
 				}
+			}
+		}
+		if (LitleUtil::getConfig('auto_orderId_if_missing') && (!isset($data['orderId']) || empty($data['orderId']))) {
+			$data['orderId'] = time();
+		}
+		// the transaction_id is used to determine duplicate transactions
+		if (LitleUtil::getConfig('auto_id_if_missing') && (!isset($data['id']) || empty($data['id']))) {
+			if (LitleUtil::getConfig('duplicate_window_in_seconds')) {
+				$idSuffix = ceil(time() / max(intval(LitleUtil::getConfig('duplicate_window_in_seconds')), 1));
+			} else {
+				$idSuffix = time();
+			}
+			if (isset($data['litleTxnId'])) {
+				$data['id'] = $this->num($data['orderId']).'-'.$idSuffix;
+			} elseif (isset($data['orderId'])) {
+				$data['id'] = $this->num($data['orderId']).'-'.$idSuffix;
 			}
 		}
 		return $data;

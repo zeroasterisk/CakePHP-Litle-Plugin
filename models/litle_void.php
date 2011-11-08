@@ -3,7 +3,7 @@
 * Plugin model for "Litle Credit Card Void Processing".
 *
 * @author Alan Blount <alan@zeroasterisk.com>
-* @link http://zeroasterisk.com
+* @link https://github.com/zeroasterisk/CakePHP-Litle-Plugin
 * @copyright (c) 2011 Alan Blount
 * @license MIT License - http://www.opensource.org/licenses/mit-license.php
 *
@@ -77,11 +77,10 @@ class LitleVoid extends LitleAppModel {
 	/**
 	* beforeSave reconfigures save inputs for "sale" transactions
 	* assumes LitleSale->data exists and has the details for the save()
-	* @param array $options optional extra litle config data
+	* @param array $options
 	* @return array $response
 	*/
 	function beforeSave($options=array()) {
-		$config = set::merge($this->config, $options);
 		$errors = array();
 		// setup defaults so elements are in the right order.
 		$data = $this->data[$this->alias];
@@ -91,14 +90,6 @@ class LitleVoid extends LitleAppModel {
 		foreach ( $requiredFields as $key ) {
 			if (!array_key_exists($key, $data) || empty($data[$key])) {
 				$errors[] = "Missing required field [{$key}]";
-			}
-		}
-		// the transaction_id is used to determine duplicate transactions
-		if ($config['auto_id_if_missing'] && (!isset($data['auto_id_if_missing']) || empty($data['auto_id_if_missing']))) {
-			if (isset($config['duplicate_window_in_seconds']) && !empty($config['duplicate_window_in_seconds'])) {
-				$data['id'] = $this->num($data['litleTxnId']).'-'.ceil(time() / $config['duplicate_window_in_seconds']);
-			} else {
-				$data['id'] = $this->num($data['litleTxnId']).'-'.time();
 			}
 		}
 		// prep root element attributes
@@ -119,7 +110,7 @@ class LitleVoid extends LitleAppModel {
 	/**
 	* afterSave parses results and verifies status for this transaction
 	* assumes LitleSale->lastRequest exists and has the details for this request
-	* @param array $options optional extra litle config data
+	* @param array $options
 	* @return array $response
 	*/
 	function afterSave($created=null) {

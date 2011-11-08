@@ -8,15 +8,11 @@
 *	converting response XML into an array
 *
 * @author Alan Blount <alan@zeroasterisk.com>
-* @link http://zeroasterisk.com
+* @link https://github.com/zeroasterisk/CakePHP-Litle-Plugin
 * @copyright (c) 2011 Alan Blount
 * @license MIT License - http://www.opensource.org/licenses/mit-license.php
 *
 */
-if (!class_exists('ArrayToXml')) {
-	App::import('Lib', 'Litle.ArrayToXml');
-}
-App::import('Core', 'HttpSocket');
 class LitleSource extends DataSource {
 	/**
 	* The description of this data source
@@ -24,18 +20,6 @@ class LitleSource extends DataSource {
 	* @var string
 	*/
 	public $description = 'Litle.net DataSource';
-	/**
-	* Default configuration
-	* Overwritten by anything in LITLE_CONFIG::$config
-	* @var array
-	*/
-	public $_baseConfig = array(
-		"url" => NULL,
-		"user" => NULL,
-		"password" => NULL,
-		'version' => '8.7',
-		'url_xmlns' => 'http://www.litle.com/schema',
-		);
 	/**
 	* These fields are often defined in the data set, but don't need to be sent to Litle
 	* @var array
@@ -60,41 +44,33 @@ class LitleSource extends DataSource {
 	*/
 	private $__requestLog = array();
 	/**
-	* Set configuration and establish HttpSocket with appropriate test/production url.
+	* Setup & establish HttpSocket.
 	* @param config an array of configuratives to be passed to the constructor to overwrite the default
 	*/
 	public function __construct($config=array()) {
 		parent::__construct($config);
-		// Try an import the .../config/litle_config.php file and merge
-		// any default and datasource specific config with the defaults above
-		$paths = array(
-			APP.'config'.DS.'litle_config.php',
-			APP.'config'.DS.'litle.php',
-			'config'.DS.'litle_config.php',
-			'config'.DS.'litle.php',
-			);
-		foreach ( $paths as $path ) {
-			if (!class_exists('LITLE_CONFIG')) {
-				App::import(array('type' => 'File', 'name' => 'Litle.LITLE_CONFIG', 'file' => $path));
+		if (is_array($config) && !empty($config)) {
+			$_config = configure::read('Litle');
+			if (is_array($_config) && !empty($_config)) {
+				$config = array_merge($_config, $config);
 			}
+			configure::write('Litle', $config);
 		}
-		$config = array();
-		if (class_exists('LITLE_CONFIG')) {
-			$LITLE_CONFIG = new LITLE_CONFIG();
-			if (isset($LITLE_CONFIG->config)) {
-				$config = set::merge($config, $LITLE_CONFIG->config);
-			}
+		if (!class_exists('LitleUtil')) {
+			App::import('Lib', 'Litle.LitleUtil');
 		}
-		// Add any config from Configure class that you might have added at any point before the model is instantiated.
-		if (($configureConfig = Configure::read('Litle.config')) != false) {
-			$config = set::merge($config, $configureConfig);
+		if (!class_exists('ArrayToXml')) {
+			App::import('Lib', 'Litle.ArrayToXml');
 		}
-		$config = $this->config($config);
+		if (!class_exists('HttpSocket')) {
+			App::import('Core', 'HttpSocket');
+		}
 		$this->Http = new HttpSocket();
 	}
 	/**
-	*
-	*
+	* Override of the basic describe() function 
+	* @param object $model
+	* @return array $_schema
 	*/
 	public function describe($model) {
 		if (isset($model->_schema)) {
@@ -109,45 +85,6 @@ class LitleSource extends DataSource {
 	*/
 	public function listSources() {
 		return array('litle_transactions');
-	}
-	/**
-    * Simple function to return the $config array
-    * @param array $config if set, merge with existing array
-    * @param bool $verify
-    * @return array $config
-    */
-	public function config($config = array(), $verify=true) {
-		if (!isset($this->config) || empty($this->config) || !is_array($this->config)) {
-			$this->config = $this->_baseConfig;
-		}
-		if (is_array($config) && !empty($config)) {
-			$config = set::merge($this->config, $config);
-		} else {
-			$config = $this->config;
-		}
-		if (!isset($config['version']) || empty($config['version'])) {
-			$config = set::merge($this->_baseConfig, $config);
-		}
-		if ($verify) {
-			$errors = array();
-			if (!isset($config['url']) || empty($config['url'])) {
-				$errors[] = "Missing or incorrect url";
-			}
-			if (!isset($config['user']) || empty($config['user'])) {
-				$errors[] = "Missing or incorrect user";
-			}
-			if (!isset($config['password']) || empty($config['password'])) {
-				$errors[] = "Missing or incorrect password";
-			}
-			if (!isset($config['merchantId']) || empty($config['merchantId'])) {
-				$errors[] = "Missing or incorrect merchantId";
-			}
-			if (!empty($errors)) {
-				die("Sorry, Litle Configuration is incorrect.<br>\n".implode("<br>\n", $errors));
-			}
-		}
-		$this->config = $config;
-		return $config;
 	}
 	/**
 	* Not currently possible to read data. Method not implemented.
@@ -170,28 +107,11 @@ class LitleSource extends DataSource {
 		return $this->__request($data, $Model);
 	}
 	/**
-	* Void a transaction
+	* Not currently possible to read data. Method not implemented.
+	* LitleSale->delete() works fine, through LitleVoid->save()
 	*/
 	public function delete(&$Model, $id = null) {
-		if (empty($id)) {
-			$id = $Model->id;
-		}
-		if (is_array($id) && isset($id[$Model->alias][$Model->primaryKey])) {
-			$id = $id[$Model->alias][$Model->primaryKey];
-		} elseif (is_array($id) && isset($id[$Model->alias.'.'.$Model->primaryKey])) {
-			$id = $id[$Model->alias.'.'.$Model->primaryKey];
-		} elseif (is_array($id) && isset($id[$Model->primaryKey])) {
-			$id = $id[$Model->primaryKey];
-		} else {
-			$id = current($id[$Model->primaryKey]);
-		}
-		# TODO: set this default "helper" data correctly (or disable this method)
-		$data = array(
-			'transaction_id' => $id,
-			'default_type' => 'VOID'
-			);
-		$data = Set::merge($this->config, $data);
-		return $this->__request($data, $Model);
+		return false;
 	}
 	/**
 	* Translate keys to a value Litle.net expects in posted data, as well as encapsulating where relevant. Returns false
@@ -207,13 +127,16 @@ class LitleSource extends DataSource {
 			// assume it's a XML body already
 			return $data;
 		}
-		$config = $this->config();
 		// litleOnlineRequestKey wrapper
 		if (array_key_exists('litleOnlineRequest', $data)) {
 			$litleOnlineRequestKey = $data['litleOnlineRequest'];
 			unset($data['litleOnlineRequest']);
 		} else {
-			$attrib = array_intersect_key($config, array('version' => 0, 'url_xmlns' => 0, 'merchantId' => 0));
+			$attrib = array(
+				'version' => LitleUtil::getConfig('version'),
+				'url_xmlns' => LitleUtil::getConfig('url_xmlns'),
+				'merchantId' => LitleUtil::getConfig('merchantId'),
+				);
 			$litleOnlineRequestKey = 'litleOnlineRequest|'.json_encode($attrib);
 		}
 		// authentication
@@ -222,7 +145,8 @@ class LitleSource extends DataSource {
 			unset($data['authentication']);
 		} else {
 			$authentication = array('authentication' => array(
-				'user' => $config['user'], 'password' => $config['password']
+				'user' => LitleUtil::getConfig('user'),
+				'password' => LitleUtil::getConfig('password'),
 				));
 		}
 		// root wrapper
@@ -243,11 +167,10 @@ class LitleSource extends DataSource {
 		#$xml = preg_replace('#(<[^/>]*>)(<[^/>]*>)#', "\$1\n\$2", $xml);
 		#$xml = preg_replace('#(</[a-zA-Z0-9]*>)(</[a-zA-Z0-9]*>)#', "\$1\n\$2", $xml);
 		$function = __function__;
-		$this->log[] =compact('func', 'config', /* 'data', */ 'requestArray', 'xml');
+		$this->log[] =compact('func', 'data', 'requestArray', 'xml');
 		/* */
 		return $xml;
 	}
-
 	/**
 	* Parse the response data from a post to authorize.net
 	* @param string $response
@@ -299,7 +222,6 @@ class LitleSource extends DataSource {
 		}
 		return compact('status', 'transaction_id', 'errors', 'response_array', 'response_raw');
 	}
-
 	/**
 	*
 	* Post data to authorize.net. Returns false if there is an error,
@@ -324,11 +246,11 @@ class LitleSource extends DataSource {
 		}
 		if (empty($errors)) {
 			$this->Http->reset();
-			$url = $this->config['url'];
+			$url = LitleUtil::getConfig('url');
 			$response_raw = $this->Http->post($url, $request_raw, array(
 				'header' => array(
 					'Connection' => 'close',
-					'User-Agent' => 'CakePHP Litle Plugin v.'.$this->config['version'],
+					'User-Agent' => 'CakePHP Litle Plugin v.'.LitleUtil::getConfig('version'),
 					)
 				));
 			if ($this->Http->response['status']['code'] != 200) {
@@ -342,7 +264,11 @@ class LitleSource extends DataSource {
 		// look for special values
 		$transaction_id = $response_array['transaction_id'] = $this->array_find("litleTxnId", $response_array);
 		$litleToken = $response_array['litleToken'] = $this->array_find("litleToken", $response_array);
-		$type = $response_array['type'] = str_replace('litle', '', strtolower($Model->alias));
+		if (is_object($Model)) {
+			$type = $response_array['type'] = str_replace('litle', '', strtolower($Model->alias));
+		} else {
+			$type = $response_array['type'] = "unkown";
+		}
 		// compact response array
 		$return = compact('type', 'status', 'transaction_id', 'litleToken', 'errors', 'data', 'request_raw', 'response_array', 'response_raw', 'url');
 		// assign to model if set

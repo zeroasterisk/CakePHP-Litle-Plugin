@@ -1,23 +1,29 @@
 <?php
 /**
+* Plugin configuration for "Litle" API.
 *
-* NOTE: you can override any of these settings with 
-Configure::write('Litle.config', array(
-	'user' => 'MyApiUser', 
-	'logModel' => 'MyLogModel', 
-	'defaults' => array('sale' => array('orderSource' => 'recurring')),
-	));
+* @author Alan Blount <alan@zeroasterisk.com>
+* @link https://github.com/zeroasterisk/CakePHP-Litle-Plugin
+* @copyright (c) 2011 Alan Blount
+* @license MIT License - http://www.opensource.org/licenses/mit-license.php
 */
-class LITLE_CONFIG {
-	var $config = array(
-		'datasource' => 'Litle.LitleSource',
+# Setup Instructions
+/**
+* Add this to your database.php file, so the datasource can be autoloaded
+* public $litle = array('datasource' => 'Litle.LitleSource');
+*/
+# Configuration
+/**
+* Change these settings as needed to meet the needs of your envrionment
+*/
+$config = array(
+	'Litle' => array(
 		// --- production environment
 		'user' => '**********',
 		'password' => '**********',
 		'merchantId' => '**********',
 		'url' => 'https://api.litle.com/vap/communicator/online',
-		// --- test environment
-		// 'url' => 'https://cert.litle.com/vap/communicator/online',
+		# test environment: => 'https://cert.litle.com/vap/communicator/online',
 		// --- Other Configurations
 		'logModel' => null, // null to disable transaction logging
 		// eg: 'logModel' => 'LitleApiLog', // any model you have, which can save the request/response details
@@ -59,6 +65,6 @@ class LITLE_CONFIG {
 			'token' => array(),
 			// etc..
 			),
-		);
-}
+		),
+	);
 ?>

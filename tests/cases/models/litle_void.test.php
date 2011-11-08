@@ -1,5 +1,5 @@
 <?php
-class LitleRecyclerTestCase extends AppTestCase {
+class LitleVoidTestCase extends AppTestCase {
 	public $plugin = 'app';
 	public $fixtures = array();
 	protected $_testsToRun = array();

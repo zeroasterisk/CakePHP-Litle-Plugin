@@ -4,18 +4,16 @@
 App::import('Datasource', 'litle.LitleSource');
 App::import('Model', 'litle.LitleTransaction');
 App::import('Lib', 'Templates.AppTestCase');
+# these details should be set in your config, but can be overridden here
+# configure::write('Litle.user', '******');
+# configure::write('Litle.password', '******');
+# configure::write('Litle.merchantId', '******');
+# probably always a good idea to override the URL to hit the cert URL
+configure::write('Litle.url', 'https://cert.litle.com/vap/communicator/online');
+configure::write('Litle.logModel', false);
 class LitleSourceTestCase extends AppTestCase {
-
 	public $plugin = 'app';
 	public $fixtures = array();
-	public $configs_for_datasource = array(
-		# these details should be set in your config, but can be overridden here
-		# 'user' => '******', // test environment
-		# 'password' => '******', // test environment
-		# 'merchantId' => '******',
-		# overridding the URL to hit the cert URL
-		'url' => 'https://cert.litle.com/vap/communicator/online',
-		);
 	protected $_testsToRun = array();
 	protected $sale = array(
 			'sale|{"id":"1","reportGroup":"ABC Division","customerId":"038945"}' => array(
@@ -39,10 +37,6 @@ class LitleSourceTestCase extends AppTestCase {
 					'number' => '4005550000081019',
 					'expDate' => '1210',
 					'cardValidationNum' => '555',
-					),
-				'customBilling' => array(
-					'phone' => '8888888888',
-					'descriptor' => 'bdi*Litle&amp;Co Test',
 					),
 				'enhancedData' => array(
 					'customerReference' => 'PO12345',
@@ -105,7 +99,7 @@ class LitleSourceTestCase extends AppTestCase {
 	* @access public
 	*/
 	function startTest(){
-		$this->LitleSource = new LitleSource($this->configs_for_datasource);
+		$this->LitleSource = new LitleSource();
 	}
 
 	/**
@@ -127,12 +121,14 @@ class LitleSourceTestCase extends AppTestCase {
 	function testSetup() {
 		$this->assertTrue(is_object($this->LitleSource));
 		$this->assertTrue(is_object($this->LitleSource->Http));
-		$this->assertTrue(is_array($this->LitleSource->config));
-		$this->assertFalse(empty($this->LitleSource->config));
-		$this->assertTrue(array_key_exists('url', $this->LitleSource->config));
-		$this->assertTrue(array_key_exists('user', $this->LitleSource->config));
-		$this->assertTrue(array_key_exists('password', $this->LitleSource->config));
-		$this->assertTrue(array_key_exists('merchantId', $this->LitleSource->config));
+		$plugin_version = LitleUtil::getConfig('plugin_version');
+		$this->assertTrue(!empty($plugin_version), "missing plugin_version from config");
+		$version = LitleUtil::getConfig('version');
+		$this->assertTrue(!empty($version), "missing version from config");
+		$url_xmlns = LitleUtil::getConfig('url_xmlns');
+		$this->assertTrue(!empty($url_xmlns), "missing url_xmlns from config");
+		$merchantId = LitleUtil::getConfig('merchantId');
+		$this->assertTrue(!empty($merchantId), "missing merchantId from config");
 	}
 	/**
 	* Validate prepApiData functionality
@@ -143,10 +139,10 @@ class LitleSourceTestCase extends AppTestCase {
 		$response = str_replace(array("\n", "	"), '', $this->LitleSource->prepareApiData($this->sale));
 		// expected data straight out of the examples sent with the API documentaiton
 		$expected = str_replace(array("\n", "	"), '', '
-			<litleOnlineRequest version="'.$this->LitleSource->config['version'].'" xmlns="'.$this->LitleSource->config['url_xmlns'].'" merchantId="'.$this->LitleSource->config['merchantId'].'">
+			<litleOnlineRequest version="'.LitleUtil::getConfig('version').'" xmlns="'.LitleUtil::getConfig('url_xmlns').'" merchantId="'.LitleUtil::getConfig('merchantId').'">
 				<authentication>
-					<user>'.$this->LitleSource->config['user'].'</user>
-					<password>'.$this->LitleSource->config['password'].'</password>
+					<user>'.LitleUtil::getConfig('user').'</user>
+					<password>'.LitleUtil::getConfig('password').'</password>
 				</authentication>
 				<sale id="1" reportGroup="ABC Division" customerId="038945">
 					<orderId>5234234</orderId>
@@ -170,10 +166,6 @@ class LitleSourceTestCase extends AppTestCase {
 						<expDate>1210</expDate>
 						<cardValidationNum>555</cardValidationNum>
 					</card>
-					<customBilling>
-						<phone>8888888888</phone>
-						<descriptor>bdi*Litle&amp;Co Test</descriptor>
-					</customBilling>
 					<enhancedData>
 						<customerReference>PO12345</customerReference>
 						<salesTax>125</salesTax>
@@ -295,14 +287,11 @@ class LitleSourceTestCase extends AppTestCase {
 		$this->AssertEqual($reponse['message'], "Valid Format");
 		$this->AssertTrue((strpos($reponse['SaleResponse']['responseTime'], date("Y-m-"))!==false), "date ".date("Y-m-")." not found in responseTime {$reponse['SaleResponse']['responseTime']}");
 		unset($reponse['SaleResponse']['responseTime']);
-		print_r($request);
-		print_r($reponse);
 		$expected = array(
 			'duplicate' => true,
 			'id' => 1,
 			'reportGroup' => 'ABC Division',
 			'customerId' => '038945',
-			'litleTxnId' => '819794770332550400',
 			'orderId' => '5234234',
 			'response' => '000',
 			'postDate' => date("Y-m-d"),
@@ -313,6 +302,10 @@ class LitleSourceTestCase extends AppTestCase {
 				'cardValidationResult' => 'M',
 				),
 			);
+		
+		$litleTxnId = $reponse['SaleResponse']['litleTxnId'];
+		unset($reponse['SaleResponse']['litleTxnId']);
+		$this->AssertTrue($litleTxnId > 10000000, "Transaction ID not large enough [$litleTxnId]");
 		$this->AssertEqual($reponse['SaleResponse'], $expected, "unexpected response: ".json_encode(set::diff($reponse['SaleResponse'], $expected)));
 	}
 	/*  */

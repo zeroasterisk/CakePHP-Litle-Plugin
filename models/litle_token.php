@@ -5,7 +5,7 @@
 * offloading of CC management to Litle
 *
 * @author Alan Blount <alan@zeroasterisk.com>
-* @link http://zeroasterisk.com
+* @link https://github.com/zeroasterisk/CakePHP-Litle-Plugin
 * @copyright (c) 2011 Alan Blount
 * @license MIT License - http://www.opensource.org/licenses/mit-license.php
 */
@@ -40,7 +40,7 @@ class LitleToken extends LitleAppModel {
 	/**
 	* beforeSave reconfigures save inputs for "sale" transactions
 	* assumes LitleSale->data exists and has the details for the save()
-	* @param array $options optional extra litle config data
+	* @param array $options
 	* @return array $response
 	*/
 	function beforeSave($options=array()) {
@@ -62,7 +62,7 @@ class LitleToken extends LitleAppModel {
 	/**
 	* afterSave parses results and verifies status for this transaction
 	* assumes LitleSale->lastRequest exists and has the details for this request
-	* @param array $options optional extra litle config data
+	* @param array $options
 	* @return array $response
 	*/
 	function afterSave($created=null) {

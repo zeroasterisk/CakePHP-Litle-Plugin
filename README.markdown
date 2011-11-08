@@ -6,7 +6,7 @@ Implementation
 
     cd app/plugins
     git clone __repo_path__ litle
-    cp litle/config/litle_config.example.php ../config/litle_config.php
+    cp litle/config/litle.example.php ../config/litle.php
     
 Finally, add the following to ../config/database.php
 
@@ -17,7 +17,7 @@ Finally, add the following to ../config/database.php
 
 Configuration
 
-Edit: app/config/litle_config.php
+Edit: app/config/litle.php
 
 Log Model
 

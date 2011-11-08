@@ -2,55 +2,57 @@
 App::import('Datasource', 'litle.LitleSource');
 App::import('Model', 'litle.LitleAppModel');
 App::import('Lib', 'Templates.AppTestCase');
+
+# these details should be set in your config, but can be overridden here
+# configure::write('Litle.user', '******');
+# configure::write('Litle.password', '******');
+# configure::write('Litle.merchantId', '******');
+# probably always a good idea to override the URL to hit the cert URL
+configure::write('Litle.url', 'https://cert.litle.com/vap/communicator/online');
+
+configure::write('Litle.logModel', null);
+configure::write('Litle.auto_orderId_if_missing', true);
+configure::write('Litle.auto_id_if_missing', true);
+configure::write('Litle.duplicate_window_in_seconds', true);
+// translate your local fields to special fields
+configure::write('Litle.field_map', array(
+	'billToAddress.name'			=> array('bill_name'),
+	'billToAddress.addressLine1'	=> array('bill_address'),
+	'billToAddress.addressLine2'	=> array('bill_address_2'),
+	'billToAddress.addressLine3'	=> array('bill_address_3'),
+	'billToAddress.city'			=> array('bill_city'),
+	'billToAddress.state'			=> array('bill_state'),
+	'billToAddress.zip'				=> array('bill_zip'),
+	'billToAddress.county'			=> array('bill_county'),
+	'card.number'					=> array('card_number', 'cc_account', 'cc_number', 'account'),
+	'card.expDate'					=> array('card_expdate', 'card_expire', 'cc_expires', 'cc_expire', 'expires'),
+	'card.cardValidationNum'		=> array('card_cardvalidationnum', 'card_cvv', 'cc_cvv', 'cvv', 'cvvn'),
+	));
+// You can assign default values for ANY API interaction (after the translation)
+configure::write('Litle.defaults', array(
+	'sale' => array(
+		'reportGroup' => '1',
+		'orderSource' => 'ecommerce',
+		'billToAddress' => array(
+			'country' => 'US',
+			),
+		'customBilling' => array(
+			'phone' => '8888888888',
+			'descriptor' => 'abc*ABC Company, LLC',
+			),
+		),
+	'void' => array(),
+	'refund' => array(),
+	'token' => array(),
+	// etc..
+	));
+
 class LitleAppModelTestCase extends AppTestCase {
 
 	public $plugin = 'app';
 	public $fixtures = array();
-	public $config = array(
-		'user' => 'USERNAME', // test environment
-		'password' => 'PASSWORD', // test environment
-		'merchantId' => '123456',
-		'url' => 'https://cert.litle.com/vap/communicator/online',
-		// --- Other Configurations
-		'logModel' => 'LitleApiLog', // null to disable transaction logging
-		'auto_orderId_if_missing' => true,
-		'auto_id_if_missing' => true, // you should probably keep this as true
-		'duplicate_window_in_seconds' => true, // protection against duplicate transactions (only used if auto_transactionId)
-		// translate your local fields to special fields
-		'field_map' => array(
-			'billToAddress.name'			=> array('bill_name'),
-			'billToAddress.addressLine1'	=> array('bill_address'),
-			'billToAddress.addressLine2'	=> array('bill_address_2'),
-			'billToAddress.addressLine3'	=> array('bill_address_3'),
-			'billToAddress.city'			=> array('bill_city'),
-			'billToAddress.state'			=> array('bill_state'),
-			'billToAddress.zip'				=> array('bill_zip'),
-			'billToAddress.county'			=> array('bill_county'),
-			'card.number'					=> array('card_number', 'cc_account', 'cc_number', 'account'),
-			'card.expDate'					=> array('card_expdate', 'card_expire', 'cc_expires', 'cc_expire', 'expires'),
-			'card.cardValidationNum'		=> array('card_cardvalidationnum', 'card_cvv', 'cc_cvv', 'cvv', 'cvvn'),
-			),
-		// You can assign default values for ANY API interaction (after the translation)
-		'defaults' => array(
-			// sale transactions
-			'sale' => array(
-				'reportGroup' => '1',
-				'orderSource' => 'ecommerce',
-				'billToAddress' => array(
-					'country' => 'US',
-					),
-				'customBilling' => array(
-					'phone' => '8888888888',
-					'descriptor' => 'abc*ABC Company, LLC',
-					),
-				),
-			'void' => array(),
-			'refund' => array(),
-			'token' => array(),
-			// etc..
-			),
-		);
 	public $test1 = array(
+			'id' => '98765',
 			'reportGroup' => '1',
 			'orderId' => '1',
 			'amount' => 125,
@@ -69,10 +71,6 @@ class LitleAppModelTestCase extends AppTestCase {
 				'expDate' => '0112',
 				'cardValidationNum' => '349',
 				),
-			'customBilling' => array (
-				'phone' => '8888888888',
-				'descriptor' => 'abc*ABC Company, LLC',
-				),
 			'attrib' => array (
 				'id' => 1320253459,
 				'reportGroup' => 'test',
@@ -89,7 +87,6 @@ class LitleAppModelTestCase extends AppTestCase {
 	*/
 	public function startTest($method) {
 		$this->LitleAppModel = new LitleAppModel(false, null, 'litle');
-		$this->LitleAppModel->config = set::merge($this->LitleAppModel->config, $this->config);
 	}
 
 	/**
@@ -115,17 +112,28 @@ class LitleAppModelTestCase extends AppTestCase {
 	}
 	/**
 	* Validate the config setup
-	* /
+	* more on tests/cases/libs/litle_util.test.php
+	*/
 	function testConfig() {
-		$this->assertTrue(isset($this->config));
-		// TODO: confirm config overwritting
-		$uid = time();
-		$this->LitleAppModel->config(compact('uid'));
-		$this->assertTrue(array_key_exists('uid', $this->config));
-		$this->assertIdentical($this->config['uid'], $uid);
-		$uid = 'something else';
-		$this->LitleAppModel->config(compact('uid'));
-		$this->assertIdentical($this->config['uid'], $uid);
+		$this->assertEqual(LitleUtil::getConfig('logModel'), configure::read('Litle.logModel'));
+		$this->assertEqual(LitleUtil::getConfig('field_map'), configure::read('Litle.field_map'));
+		$this->assertEqual(LitleUtil::getConfig('defaults'), configure::read('Litle.defaults'));
+		$this->assertEqual(LitleUtil::getConfig('url'), configure::read('Litle.url'));
+		// not change config on the fly
+		$url = configure::read('Litle.url');
+		LitleUtil::setConfig('url', 'http://google.com');
+		$this->assertEqual(LitleUtil::getConfig('url'), 'http://google.com');
+		$this->assertEqual(configure::read('Litle.url'), 'http://google.com');
+		LitleUtil::setConfig('url', $url);
+		$this->assertEqual(LitleUtil::getConfig('url'), $url);
+		$this->assertEqual(configure::read('Litle.url'), $url);
+		// now testing deeper nestings
+		$orderSource = configure::read('Litle.defaults.sale.orderSource');
+		$this->assertEqual(LitleUtil::getConfig('defaults.sale.orderSource'), $orderSource);
+		LitleUtil::setConfig('defaults.sale.orderSource', 'bad source');
+		$this->assertEqual(LitleUtil::getConfig('defaults.sale.orderSource'), 'bad source');
+		LitleUtil::setConfig('defaults.sale.orderSource', $orderSource);
+		$this->assertEqual(LitleUtil::getConfig('defaults.sale.orderSource'), $orderSource);
 	}
 	/**
 	* Validate orderFields functionality
@@ -207,12 +215,14 @@ class LitleAppModelTestCase extends AppTestCase {
 		$this->__deep_ksort($data);
 		$this->__deep_ksort($expected);
 		$response = $this->LitleAppModel->assignDefaults($data, 'sale');
+		$this->__deep_ksort($response);
 		$this->AssertEqual($response, $expected);
 		// now test the inclusion of defaults
 		// unset fields should be included by default
+		LitleUtil::setConfig('defaults.sale.orderSource', $data['orderSource']);
+		LitleUtil::setConfig('defaults.sale.billToAddress.country', $data['billToAddress']['country']);
 		unset($data['orderSource']);
 		unset($data['billToAddress']['country']);
-		unset($data['customBilling']);
 		$response = $this->LitleAppModel->assignDefaults($data, 'sale');
 		$this->__deep_ksort($response);
 		$this->AssertEqual($response, $expected);
@@ -222,7 +232,7 @@ class LitleAppModelTestCase extends AppTestCase {
 		$this->__deep_ksort($response);
 		$this->AssertNotEqual($response, $expected);
 		// now tweak the config and retest
-		$this->LitleAppModel->config['defaults']['sale']['card']['number'] = $this->test1['card']['number'];
+		LitleUtil::setConfig('defaults.sale.card.number', $this->test1['card']['number']);
 		$response = $this->LitleAppModel->assignDefaults($data, 'sale');
 		$this->__deep_ksort($response);
 		$this->AssertEqual($response, $expected);
