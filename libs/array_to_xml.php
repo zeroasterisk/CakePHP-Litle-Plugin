@@ -55,6 +55,7 @@ class ArrayToXml {
 	static function build($array = array(), $headers = false){
 		if (!is_object(ArrayToXml::$XmlHelper)) {
 			App::import('Core', 'Xml');
+			App::import('Core', 'Helper');
 			App::import('Helper', 'Xml');
 			ArrayToXml::$XmlHelper = new XmlHelper();
 		}
