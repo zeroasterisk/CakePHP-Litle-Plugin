@@ -172,8 +172,10 @@ class LitleSale extends LitleAppModel {
 	/**
 	* Overwrite of the delete function
 	* Performs a Void, and if that fails, tries to Credit
+	* @param int $transaction_id
+	* @param string $orderId optional
 	*/
-	function delete($transaction_id) {
+	function delete($transaction_id=null, $orderId=null) {
 		$this->lastRequest = array();
 		$errors = array();
 		if (empty($transaction_id) || !is_numeric($transaction_id)) {
@@ -185,7 +187,11 @@ class LitleSale extends LitleAppModel {
 		App::import('Model', 'Litle.LitleVoid');
 		$LitleVoid =& ClassRegistry::init('Litle.LitleVoid');
 		$LitleVoid->useDbConfig = 'litle';
-		$saved = $LitleVoid->save(array('litleTxnId' => $transaction_id));
+		$data = array('litleTxnId' => $transaction_id);
+		if (empty($orderId) && !empty($orderId) && (is_string($orderId) || is_int($orderId))) {
+			$data['orderId'] = $orderId;
+		}
+		$saved = $LitleVoid->save($data);
 		$this->log[] = $LitleVoid->log;
 		$this->errors[] = $LitleVoid->errors;
 		$this->lastRequest = $LitleVoid->lastRequest;
@@ -196,7 +202,7 @@ class LitleSale extends LitleAppModel {
 		App::import('Model', 'Litle.LitleCredit');
 		$LitleCredit =& ClassRegistry::init('Litle.LitleCredit');
 		$LitleCredit->useDbConfig = 'litle';
-		$LitleCredit->save(array('litleTxnId' => $transaction_id));
+		$LitleCredit->save($data);
 		$this->log[] = $LitleCredit->lastRequest;
 		$this->lastRequest = $LitleCredit->lastRequest;
 		if ($this->lastRequest['status']=='good') {
