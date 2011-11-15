@@ -46,9 +46,7 @@ configure::write('Litle.defaults', array(
 	'token' => array(),
 	// etc..
 	));
-
 class LitleAppModelTestCase extends AppTestCase {
-
 	public $plugin = 'app';
 	public $fixtures = array();
 	public $test1 = array(
@@ -71,13 +69,16 @@ class LitleAppModelTestCase extends AppTestCase {
 				'expDate' => '0112',
 				'cardValidationNum' => '349',
 				),
+			'customBilling' => array(
+				'phone' => '8888888888',
+				'descriptor' => 'abc*ABC Company, LLC',
+				),
 			'attrib' => array (
 				'id' => 1320253459,
 				'reportGroup' => 'test',
 				),
 			);
 	protected $_testsToRun = array();
-
 	/**
 	* Start Test callback
 	*
@@ -88,7 +89,6 @@ class LitleAppModelTestCase extends AppTestCase {
 	public function startTest($method) {
 		$this->LitleAppModel = new LitleAppModel(false, null, 'litle');
 	}
-
 	/**
 	* End Test callback
 	*
@@ -101,7 +101,6 @@ class LitleAppModelTestCase extends AppTestCase {
 		unset($this->LitleAppModel);
 		ClassRegistry::flush();
 	}
-
 	/**
 	* Validate the plugin setup
 	*/
@@ -159,6 +158,60 @@ class LitleAppModelTestCase extends AppTestCase {
 		$this->AssertNotEqual(json_encode($data), json_encode($expected));
 		$response = $this->LitleAppModel->orderFields($data, 'sale');
 		$this->AssertEqual(json_encode($response), json_encode($expected));
+	}
+	/**
+	* Validate the cleanValues
+	*/
+	function testCleanValues() {
+		// control | pass in the anticipated results and ensure they are unchanged
+		$response = $expected = $data = $this->test1;
+		$this->__deep_ksort($data);
+		$this->__deep_ksort($expected);
+		$response = $this->LitleAppModel->cleanValues($data);
+		$this->__deep_ksort($response);
+		$this->AssertEqual($response, $expected);
+		// now lets pass in some bad values
+		$data['reportGroup'] = '1234qwer56;lkj78!@ #$%^&*9()_+0';
+		$expected['reportGroup'] = '1234qwer56;lkj78!@ #$%^&*';
+		$data['orderId'] = '1234qwer56;lkj78!@ #$%^&*9()_+0';
+		$expected['orderId'] = '12345678';
+		$data['card']['number'] = '1234qwer56;lkj78!@ #$%^&*9()_+0';
+		$expected['card']['number'] = '1234567890';
+		$data['card']['expDate'] = '1234qwer56;lkj78!@ #$%^&*9()_+0';
+		$expected['card']['expDate'] = '1234';
+		$data['card']['type'] = '4qwer56;lkj78!@ #$%^&*9()_+0';
+		$expected['card']['type'] = '4q';
+		$data['processingInstructions']['bypassVelocityCheck'] = true;
+		$expected['processingInstructions']['bypassVelocityCheck'] = 'true';
+		$response = $this->LitleAppModel->cleanValues($data);
+		$this->__deep_ksort($response);
+		$this->AssertEqual($response, $expected);
+		// a few more tests for booleans
+		$data['processingInstructions']['bypassVelocityCheck'] = 1;
+		$response = $this->LitleAppModel->cleanValues($data);
+		$this->AssertEqual($response['processingInstructions']['bypassVelocityCheck'], 'true');
+		$data['processingInstructions']['bypassVelocityCheck'] = 'TRUE';
+		$response = $this->LitleAppModel->cleanValues($data);
+		$this->AssertEqual($response['processingInstructions']['bypassVelocityCheck'], 'true');
+		$data['processingInstructions']['bypassVelocityCheck'] = 'anything';
+		$response = $this->LitleAppModel->cleanValues($data);
+		$this->AssertEqual($response['processingInstructions']['bypassVelocityCheck'], 'true');
+		$data['processingInstructions']['bypassVelocityCheck'] = 'false';
+		$response = $this->LitleAppModel->cleanValues($data);
+		$this->AssertEqual($response['processingInstructions']['bypassVelocityCheck'], 'false');
+		$data['processingInstructions']['bypassVelocityCheck'] = 'FALSE';
+		$response = $this->LitleAppModel->cleanValues($data);
+		$this->AssertEqual($response['processingInstructions']['bypassVelocityCheck'], 'false');
+		$data['processingInstructions']['bypassVelocityCheck'] = false;
+		$response = $this->LitleAppModel->cleanValues($data);
+		$this->AssertEqual($response['processingInstructions']['bypassVelocityCheck'], 'false');
+		$data['processingInstructions']['bypassVelocityCheck'] = null;
+		$response = $this->LitleAppModel->cleanValues($data);
+		$this->AssertEqual($response['processingInstructions']['bypassVelocityCheck'], 'false');
+		$data['processingInstructions']['bypassVelocityCheck'] = 0;
+		$response = $this->LitleAppModel->cleanValues($data);
+		$this->AssertEqual($response['processingInstructions']['bypassVelocityCheck'], 'false');
+		
 	}
 	/**
 	* Validate the translateFields
@@ -221,8 +274,13 @@ class LitleAppModelTestCase extends AppTestCase {
 		// unset fields should be included by default
 		LitleUtil::setConfig('defaults.sale.orderSource', $data['orderSource']);
 		LitleUtil::setConfig('defaults.sale.billToAddress.country', $data['billToAddress']['country']);
+		LitleUtil::setConfig('defaults.sale.customBilling', array(
+			'phone' => '8888888888',
+			'descriptor' => 'abc*ABC Company, LLC',
+			));
 		unset($data['orderSource']);
 		unset($data['billToAddress']['country']);
+		unset($data['customBilling']); 
 		$response = $this->LitleAppModel->assignDefaults($data, 'sale');
 		$this->__deep_ksort($response);
 		$this->AssertEqual($response, $expected);

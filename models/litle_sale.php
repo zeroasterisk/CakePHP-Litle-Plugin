@@ -70,15 +70,6 @@ class LitleSale extends LitleAppModel {
 	* @var array
 	*/
 	public $_schema_extras = array(
-		'card_number' => array('type' => 'integer', 'length' => '25', 'comment' => 'account number associated with the transaction.'),
-		'card_expDate' => array('type' => 'integer', 'length' => '4', 'comment' => 'required for card-not-present transactions. / You should submit whatever expiration date you have on file, regardless of whether or not it is expired/stale.'),
-		'card_type' => array('type' => 'string', 'length' => '2', 'comment' => '', 'options' => array('MC', 'VI',' AX', 'DC', 'DI', 'PP', 'JC', 'BL', 'EC')),
-		'card_cardValidationNum' => array('type' => 'string', 'length' => '4', 'comment' => 'optional'),
-		'token_tokenResponseCode' => array('type' => 'string', 'length' => '3', 'options' => array('801', '802', '820', '821', '822', '823', '898', '899'), 'comment' => 'The tokenMessage element contains a short, human-readable explanation of the tokenResponseCode'),
-		'token_tokenMessage' => array('type' => 'string', 'length' => '512', 'comment' => 'The tokenMessage element provides a short, human-readable explanation of the tokenResponseCode'),
-		'token_litleToken' => array('type' => 'string', 'length' => '25', 'comment' => 'The length of the token is the same as the length of the submitted account number for credit card tokens or a fixed length of seventeen (17) characters for eCheck account tokens.'),
-		'token_type' => array('type' => 'string', 'length' => '3', 'comment' => 'Bank Identification Number'),
-		'token_bin' => array('type' => 'string', 'length' => '3', 'comment' => 'Bank Identification Number'),
 		'govt_tax' => array('type' => 'string', 'length' => '16', 'options' => array('payment', 'fee')),
 		'currency_code' => array('type' => 'string', 'length' => '3', 'options' => array('AUD', 'CAD', 'CHF', 'DKK', 'EUR', 'GBP', 'HKD', 'JPY', 'NOK', 'NZD', 'SEK', 'SGD', 'USD')),
 		);

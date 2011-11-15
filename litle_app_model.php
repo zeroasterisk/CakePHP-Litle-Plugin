@@ -59,10 +59,6 @@ class LitleAppModel extends AppModel {
 	* @param array $templates
 	*/
 	public $templates = array(
-		'attrib' => array(
-			'id' => null,
-			'reportGroup' => null,
-			),
 		'sale' => array(
 			// attrib
 			'id' => null,
@@ -104,7 +100,7 @@ class LitleAppModel extends AppModel {
 			'processingInstructions' => null,
 			),
 		'credit' => array(
-			// attrib
+			// attribs
 			'id' => null,
 			'reportGroup' => null,
 			'customerId' => null,
@@ -201,6 +197,53 @@ class LitleAppModel extends AppModel {
 			'accountNumber' => null,
 			'echeckForToken' => null,
 			'paypageRegistrationId' => null,
+			),
+		'processingInstructions' => array(
+			'bypassVelocityCheck' => null,
+			),
+		// various attributes and elements (so we know how to truncate)
+		'schema' => array(
+			'id' => array('type' => 'string', 'length' => '25', 'comment' => 'unique transaction id (determines duplicates)'),
+			'reportGroup' => array('type' => 'string', 'length' => '25', 'comment' => 'required attribute that defines the merchant sub-group'),
+			'customerId' => array('type' => 'string', 'length' => '25', 'comment' => 'required attribute that defines the merchant sub-group'),
+			'orderId' => array('type' => 'integer', 'length' => '8', 'comment' => 'internal order id'),
+			'amount' => array('type' => 'integer', 'length' => '8', 'comment' => 'a value of 1995 signifies $19.95'),
+			'orderSource' => array('type' => 'string', 'length' => '25', 'comment' => 'defines the order entry source for the type of transaction', 'options' => array('3dsAuthenticated', '3dsAttempted', 'ecommerce', 'installment', 'mailorder', 'recurring', 'retail', 'telephone')),
+			'litleTxnId' => array('type' => 'string', 'length' => '25', 'comment' => 'litle\'s unique transaction id from response'),
+			'number' => array('type' => 'integer', 'length' => '25', 'comment' => 'account number associated with the transaction.'),
+			'expDate' => array('type' => 'integer', 'length' => '4', 'comment' => 'required for card-not-present transactions. / You should submit whatever expiration date you have on file, regardless of whether or not it is expired/stale.'),
+			'type' => array('type' => 'string', 'length' => '2', 'comment' => '', 'options' => array('MC', 'VI',' AX', 'DC', 'DI', 'PP', 'JC', 'BL', 'EC')),
+			'cardValidationNum' => array('type' => 'string', 'length' => '4', 'comment' => 'optional'),
+			'litleToken' => array('type' => 'string', 'length' => '25', 'comment' => 'The length of the token is the same as the length of the submitted account number for credit card tokens or a fixed length of seventeen (17) characters for eCheck account tokens.'),
+			'bin' => array('type' => 'string', 'length' => '3', 'comment' => 'Bank Identification Number'),
+			'tax' => array('type' => 'string', 'length' => '16', 'options' => array('payment', 'fee')),
+			'routingNum' => array('type' => 'string', 'length' => '9', 'comment' => 'The routingNum element is a required child of the echeck, originalAccountInfo, and newAccountInfo elements defining the routing number of the Echeck account.'),
+			'currencyCode' => array('type' => 'string', 'length' => '3', 'options' => array('AUD', 'CAD', 'CHF', 'DKK', 'EUR', 'GBP', 'HKD', 'JPY', 'NOK', 'NZD', 'SEK', 'SGD', 'USD')),
+			'name' => array('type' => 'string', 'length' => '100'),
+			'firstName' => array('type' => 'string', 'length' => '25'),
+			'middleInitial' => array('type' => 'string', 'length' => '1'),
+			'lastName' => array('type' => 'string', 'length' => '25'),
+			'companyName' => array('type' => 'string', 'length' => '40'),
+			'addressLine1' => array('type' => 'string', 'length' => '35'),
+			'addressLine2' => array('type' => 'string', 'length' => '35'),
+			'addressLine3' => array('type' => 'string', 'length' => '35'),
+			'city' => array('type' => 'string', 'length' => '35'),
+			'state' => array('type' => 'string', 'length' => '2'),
+			'zip' => array('type' => 'string', 'length' => '20'),
+			'country' => array('type' => 'string', 'length' => '3'),
+			'email' => array('type' => 'string', 'length' => '100'),
+			'phone' => array('type' => 'string', 'length' => '20'),
+			'customBilling.phone' => array('type' => 'integer', 'length' => '13'),
+			'customBilling.url' => array('type' => 'string', 'length' => '13', 'comment' => 'A-Z, a-z, 0-9, /, \, -, ., or _.'),
+			'bypassVelocityCheck' => array('type' => 'bool'),
+			'affiliate' => array('type' => 'string', 'length' => '25', 'comment' => 'use it to track transactions associated with various affiliate organizations'),
+			'campaign' => array('type' => 'string', 'length' => '25', 'comment' => 'use it to track transactions associated with various marketing campaigns'),
+			'merchantGroupingId' => array('type' => 'string', 'length' => '25', 'comment' => 'use it to track transactions based upon this user defined parameter'),
+			),
+		// common attributes
+		'attrib' => array(
+			'id' => null,
+			'reportGroup' => null,
 			),
 		);
 
@@ -441,12 +484,24 @@ class LitleAppModel extends AppModel {
 	function cleanValues($data) {
 		if (is_array($data)) {
 			foreach ( $data as $key => $val ) {
-				if (in_array($key, array('expDate', 'amount', 'number'))) {
-					$data[$key] = preg_replace('#[^0-9]#', '', $val);
-				} elseif (is_array($val)) {
+				if (is_array($val)) {
 					$data[$key] = $this->cleanValues($val);
-				} elseif (isset($this->_schema) && in_array($key, $this->_schema) && isset($this->_schema[$key]['length'])) {
-					$data[$key] = substr($data[$key], 0, $this->_schema[$key]['length']);
+				} else {
+					$schema = array();
+					if (array_key_exists($key, $this->templates['schema'])) {
+						$schema = $this->templates['schema'][$key];
+					}
+					if (isset($this->_schema) && array_key_exists($key, $this->_schema) && is_array($this->_schema[$key])) {
+						$schema = array_merge($schema, $this->_schema[$key]);
+					}
+					if (array_key_exists('type', $schema) && $schema['type'] == 'integer') {
+						$data[$key] = preg_replace('#[^0-9]#', '', $data[$key]);
+					} elseif (array_key_exists('type', $schema) && $schema['type'] == 'bool') {
+						$data[$key] = (empty($data[$key]) || strtolower($data[$key])=='false' || strtolower($data[$key])=='no' ? 'false' : 'true');
+					}
+					if (array_key_exists('length', $schema)) {
+						$data[$key] = substr($data[$key], 0, $schema['length']);
+					}
 				}
 			}
 		}
