@@ -147,10 +147,10 @@ class LitleSale extends LitleAppModel {
 		}
 		extract($response_array);
 		$this->id = $transaction_id = (!empty($litleTxnId) ? $litleTxnId : 0);
-		if (empty($transaction_id)) {
+		if (empty($transaction_id) && empty($errors)) {
 			$errors[] = "Missing transaction_id (litleTxnId)";
 		}
-		if ($response!="000" && $response!="0") {
+		if ($response!="000" && $response!="0" && empty($errors)) {
 			$errors[] = "Error: {$message}";
 		}
 		if (!empty($errors)) {
