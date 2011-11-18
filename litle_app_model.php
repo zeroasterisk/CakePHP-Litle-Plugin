@@ -325,7 +325,7 @@ class LitleAppModel extends AppModel {
 		$logModel = LitleUtil::getConfig('logModel');
 		if (!empty($logModel) && is_string($logModel)) {
 			App::import('Model', $logModel);
-			$LogModel =& ClassRegistry::init($logModel);
+			$LogModel =  ClassRegistry::init($logModel);
 			if (method_exists($LogModel, 'logLitleRequest')) {
 				return $LogModel->logLitleRequest($this->lastRequest);
 			} elseif (method_exists($LogModel, 'logRequest')) {
@@ -513,7 +513,7 @@ class LitleAppModel extends AppModel {
 	* @return string $xml
 	*/
 	public function prepareApiData($data = array()) {
-		$db =& ConnectionManager::getDataSource($this->useDbConfig);
+		$db =  ConnectionManager::getDataSource($this->useDbConfig);
 		return $db->prepareApiData($data);
 	}
 	/**
@@ -522,7 +522,7 @@ class LitleAppModel extends AppModel {
 	* @return array $response
 	*/
 	public function parseResponse($xml = null) {
-		$db =& ConnectionManager::getDataSource($this->useDbConfig);
+		$db =  ConnectionManager::getDataSource($this->useDbConfig);
 		return $db->parseResponse($xml);
 	}
 	/**
