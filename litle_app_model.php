@@ -239,6 +239,9 @@ class LitleAppModel extends AppModel {
 			'affiliate' => array('type' => 'string', 'length' => '25', 'comment' => 'use it to track transactions associated with various affiliate organizations'),
 			'campaign' => array('type' => 'string', 'length' => '25', 'comment' => 'use it to track transactions associated with various marketing campaigns'),
 			'merchantGroupingId' => array('type' => 'string', 'length' => '25', 'comment' => 'use it to track transactions based upon this user defined parameter'),
+			'employerName' => array('type' => 'string', 'length' => '20'),
+			'customerWorkTelephone' => array('type' => 'string', 'length' => '20'),
+			'customerType' => array('type' => 'string', 'length' => '20'),
 			),
 		// common attributes
 		'attrib' => array(
