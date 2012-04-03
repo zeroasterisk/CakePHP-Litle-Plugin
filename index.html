@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8' />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="Cakephp-litle-plugin : CakePHP Plugin to interact with the Litle API" />
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Cakephp-litle-plugin</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/zeroasterisk/CakePHP-Litle-Plugin">Fork Me on GitHub</a>
+
+          <h1 id="project_title">Cakephp-litle-plugin</h1>
+          <h2 id="project_tagline">CakePHP Plugin to interact with the Litle API</h2>
+
+          <section id="downloads">
+            <a class="zip_download_link" href="https://github.com/zeroasterisk/CakePHP-Litle-Plugin/zipball/master">Download this project as a .zip file</a>
+            <a class="tar_download_link" href="https://github.com/zeroasterisk/CakePHP-Litle-Plugin/tarball/master">Download this project as a tar.gz file</a>
+          </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h3>Litle &amp; Co, API CakePHP Plugin.</h3>
+
+<p>This API should help make it easy to implement Litle API interactions.  Currently we support SALE and VOID and CREDIT transactions, but extending beyond should be pretty simple.  The API is implemented on the Model level, using a datasource to process the requests.</p>
+
+<pre><code>cd your_path/app/plugins
+git clone git://github.com/zeroasterisk/CakePHP-Litle-Plugin.git litle
+cp litle/config/litle.example.php ../config/litle.php
+</code></pre>
+
+<p>or</p>
+
+<pre><code>cd your_path
+git submodule add git://github.com/zeroasterisk/CakePHP-Litle-Plugin.git app/plugins/litle
+cp app/plugins/litle/config/litle.example.php app/config/litle.php
+</code></pre>
+
+<p>Finally, add the following to app/config/database.php</p>
+
+<pre><code>public $litle = array(
+    'datasource' =&gt; 'Litle.LitleSource',
+    /* the rest of the conifugration is in config/litle.php */
+    );
+</code></pre>
+
+<h2>Configuration</h2>
+
+<p>Edit: app/config/litle.php</p>
+
+<p>It's a good idea to log every API interaction, both what we sent and what we get back.</p>
+
+<pre><code>$config['Litle']['logModel'] = 'MyCustomLoggingModel';
+$MyCustomLoggingModel-&gt;logLitleRequest($LitleSale-&gt;lastRequest); # else
+//$MyCustomLoggingModel-&gt;logRequest($LitleSale-&gt;lastRequest); # else
+//$MyCustomLoggingModel-&gt;save($LitleSale-&gt;lastRequest);
+
+# FYI: $lastRequest = compact('type', 'status', 'response', 'message', 'transaction_id', 'litleToken', 'errors', 'data', 'request_raw', 'response_array', 'response_raw', 'url');
+</code></pre>
+
+<h2>Features</h2>
+
+<ul>
+<li>Credit Card Processing
+
+<ul>
+<li>sales (charges)</li>
+<li>voids</li>
+<li>credits (refunds)</li>
+</ul>
+</li>
+<li>Tokenization
+
+<ul>
+<li>built into the sale</li>
+<li>stand alone API</li>
+</ul>
+</li>
+<li>Recycler Advice / Updater
+
+<ul>
+<li>built into the sale / implied on recycle attempts</li>
+</ul>
+</li>
+</ul><h2>About</h2>
+
+<p>Author Alan Blount <a href="mailto:alan@zeroasterisk.com">alan@zeroasterisk.com</a>
+copyright (c) 2011 Alan Blount
+license MIT License - <a href="http://www.opensource.org/licenses/mit-license.php">http://www.opensource.org/licenses/mit-license.php</a></p>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Cakephp-litle-plugin maintained by <a href="https://github.com/zeroasterisk">zeroasterisk</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+              <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("UA-30564563-1");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
+
+  </body>
+</html>
