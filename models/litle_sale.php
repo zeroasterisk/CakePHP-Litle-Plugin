@@ -165,8 +165,9 @@ class LitleSale extends LitleAppModel {
 	* Performs a Void, and if that fails, tries to Credit
 	* @param int $transaction_id
 	* @param string $orderId optional
+	* @param string $reportGroup optional
 	*/
-	function delete($transaction_id=null, $orderId=null) {
+	function delete($transaction_id=null, $orderId=null, $reportGroup=null) {
 		$this->lastRequest = array();
 		$errors = array();
 		if (empty($transaction_id) || !is_numeric($transaction_id)) {
@@ -178,7 +179,7 @@ class LitleSale extends LitleAppModel {
 		App::import('Model', 'Litle.LitleVoid');
 		$LitleVoid =& ClassRegistry::init('Litle.LitleVoid');
 		$LitleVoid->useDbConfig = 'litle';
-		$data = array('litleTxnId' => $transaction_id);
+		$data = array('litleTxnId' => $transaction_id) + (!empty($reportGroup) ? array('reportGroup' => $reportGroup) : array());
 		if (empty($orderId) && !empty($orderId) && (is_string($orderId) || is_int($orderId))) {
 			$data['orderId'] = $orderId;
 		}
