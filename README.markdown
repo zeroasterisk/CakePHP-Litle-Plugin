@@ -4,9 +4,9 @@ A CakePHP plugin to facilitate the easy implementation of Litle Bank's API.
 
 Implementation
 
-    cd app/plugins
-    git clone __repo_path__ litle
-    cp litle/config/litle.example.php ../config/litle.php
+    cd app/Plugin
+    git clone __repo_path__ Litle
+    cp Litle/Config/litle.example.php ../Config/litle.php
     
 Finally, add the following to ../config/database.php
 
@@ -17,7 +17,7 @@ Finally, add the following to ../config/database.php
 
 Configuration
 
-Edit: app/config/litle.php
+Edit: app/Config/Litle.php
 
 It's a good idea to log every API interaction, both what we sent and what we get back.
 
