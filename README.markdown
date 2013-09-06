@@ -1,21 +1,23 @@
-Litle API
+# Litle API
+
+## NOT TESTED YET OR SAFE TO RUN IN CAKEPHP2.X
 
 A CakePHP plugin to facilitate the easy implementation of Litle Bank's API. 
 
-Implementation
+## Implementation
 
     cd app/Plugin
     git clone __repo_path__ Litle
     cp Litle/Config/litle.example.php ../Config/litle.php
     
-Finally, add the following to ../config/database.php
+Finally, add the following to ../Config/database.php
 
     public $litle = array(
         'datasource' => 'Litle.LitleSource',
         /* the rest of the conifugration is in config/litle.php */
         );
 
-Configuration
+## Configuration
 
 Edit: app/Config/Litle.php
 
@@ -28,7 +30,7 @@ It's a good idea to log every API interaction, both what we sent and what we get
     
     # FYI: $lastRequest = compact('type', 'status', 'response', 'message', 'transaction_id', 'litleToken', 'errors', 'data', 'request_raw', 'response_array', 'response_raw', 'url');
 
-Features
+## Features
 
 * Credit Card Processing
 ** sales (charges)
@@ -40,9 +42,9 @@ Features
 * Recycler Advice / Updater
 ** built into the sale / implied on recycle attempts
 
-Unit Tests
+## Unit Tests
 
-About
+## About
 
 author Alan Blount <alan@zeroasterisk.com>
 copyright (c) 2011 Alan Blount
