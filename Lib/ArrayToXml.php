@@ -53,13 +53,7 @@ class ArrayToXml {
 	* @param boolean include headers (default false)
 	*/
 	static function build($array = array(), $headers = false){
-		if (!is_object(ArrayToXml::$XmlHelper)) {
-			App::import('Core', 'Xml');
-			App::import('Core', 'Helper');
-			App::import('Helper', 'Xml');
-			ArrayToXml::$XmlHelper = new XmlHelper();
-		}
-		$retval = $headers ? ArrayToXml::$XmlHelper->header() : "";
+		$retval = $headers ? ArrayToXml::header(): "";
 		foreach($array as $tag => $value){
 			$options = null;
 			extract(ArrayToXml::parseKey($tag));
@@ -68,9 +62,9 @@ class ArrayToXml {
 					$options = (is_array($options) ? array_merge($value[ArrayToXml::$attribKey]) : $value[ArrayToXml::$attribKey]);
 					unset($value[ArrayToXml::$attribKey]);
 				}
-				$retval .= ArrayToXml::$XmlHelper->elem($tag, $options, ArrayToXml::build($value, false));
+				$retval .= ArrayToXml::elem($tag, $options, ArrayToXml::build($value, false));
 			} else {
-				$retval .= ArrayToXml::$XmlHelper->elem($tag, $options, ArrayToXml::xml_value($value));
+				$retval .= ArrayToXml::elem($tag, $options, ArrayToXml::xml_value($value));
 			}
 		}
 		return $retval;
@@ -207,5 +201,25 @@ class ArrayToXml {
 		}
 		return $out;
 	}
+	/**
+	* Replacement for XmlHelper::elem() which is deprecated in 2.x
+	* @param tag
+	* @param array of attributes
+	* @param string content
+	*/
+	static private function elem($name, $attributes = array(), $content = null){
+		$attributes['@'] = $content;
+		$data = array(
+			$name => $attributes
+		);
+		$retval = Xml::fromArray($data, array('format' => 'attribute', 'encoding' => null))->asXML();
+		$retval = str_replace(array("<?xml version=\"1.0\"?>","\n"), "", $retval);
+		return html_entity_decode($retval);
+	}
+	/**
+	* Replacement for XmlHelper::header() which is deprecated in 2.x
+	*/
+	static private function xmlHeader(){
+		return '<?xml version="1.0" encoding="UTF-8" ?>';
+	}
 }
-?>

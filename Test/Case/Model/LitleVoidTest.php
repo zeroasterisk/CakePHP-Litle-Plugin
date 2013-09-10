@@ -1,5 +1,5 @@
 <?php
-class LitleCreditTestCase extends AppTestCase {
+class LitleVoidTest extends CakeTestCase {
 	public $plugin = 'app';
 	public $fixtures = array();
 	protected $_testsToRun = array();

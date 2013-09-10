@@ -13,6 +13,8 @@
 * @license MIT License - http://www.opensource.org/licenses/mit-license.php
 *
 */
+App::uses('LitleUtil', 'Litle.Lib');
+App::uses('AppModel', 'Model');
 class LitleAppModel extends AppModel {
 	/**
 	* This model doesn't use a table
@@ -261,9 +263,6 @@ class LitleAppModel extends AppModel {
 	*/
 	public function __construct($config=array()) {
 		parent::__construct($config);
-		if (!class_exists('LitleUtil')) {
-			App::import('Lib', 'Litle.LitleUtil');
-		}
 	}
 	/**
 	* Overwrite of the save method
@@ -273,7 +272,7 @@ class LitleAppModel extends AppModel {
 	* afterSave() parses the data
 	* logRequest() (optional) logs to
 	*/
-	function save($data) {
+	function save($data = null, $validate = true, $fieldList = array()) {
 		$return = parent::save($data);
 		$this->logRequest();
 		return $return;

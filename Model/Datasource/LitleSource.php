@@ -13,6 +13,11 @@
 * @license MIT License - http://www.opensource.org/licenses/mit-license.php
 *
 */
+App::uses('DataSource','Model/Datasource');
+App::uses('LitleUtil','Litle.Lib');
+App::uses('HttpSocket', 'Network/Http');
+App::uses('ArrayToXml', 'Litle.Lib');
+App::uses('Xml', 'Utility');
 class LitleSource extends DataSource {
 	/**
 	* The description of this data source
@@ -56,15 +61,6 @@ class LitleSource extends DataSource {
 			}
 			configure::write('Litle', $config);
 		}
-		if (!class_exists('LitleUtil')) {
-			App::import('Lib', 'Litle.LitleUtil');
-		}
-		if (!class_exists('ArrayToXml')) {
-			App::import('Lib', 'Litle.ArrayToXml');
-		}
-		if (!class_exists('HttpSocket')) {
-			App::import('Core', 'HttpSocket');
-		}
 		$this->Http = new HttpSocket();
 	}
 	/**
@@ -83,26 +79,26 @@ class LitleSource extends DataSource {
 	/**
 	* Unsupported methods other CakePHP model and related classes require.
 	*/
-	public function listSources() {
+	public function listSources($data = null) {
 		return array('litle_transactions');
 	}
 	/**
 	* Not currently possible to read data. Method not implemented.
 	*/
-	public function read(&$Model, $queryData = array()) {
+	public function read(Model $Model, $queryData = array(), $recursive = null) {
 		return false;
 	}
 	/**
 	* Create a new transaction
 	*/
-	public function create(&$Model, $fields = array(), $values = array()) {
+	public function create(Model $Model, $fields = null, $values = null) {
 		$data = array_combine($fields, $values);
 		return $this->__request($data, $Model);
 	}
 	/**
 	* Capture a previously authorized transaction
 	*/
-	public function update(&$Model, $fields = null, $values = null) {
+	public function update(Model $Model, $fields = null, $values = null, $conditions = null) {
 		$data = array_combine($fields, $values);
 		return $this->__request($data, $Model);
 	}
@@ -110,7 +106,7 @@ class LitleSource extends DataSource {
 	* Not currently possible to read data. Method not implemented.
 	* LitleSale->delete() works fine, through LitleVoid->save()
 	*/
-	public function delete(&$Model, $id = null) {
+	public function delete(Model $Model, $id = null) {
 		return false;
 	}
 	/**
@@ -119,7 +115,7 @@ class LitleSource extends DataSource {
 	* @param mixed $data
 	* @return string $xml
 	*/
-	public function prepareApiData($data = null, &$Model=null) {
+	public function prepareApiData($data = null, Model $Model=null) {
 		if (empty($data)) {
 			return false;
 		}
@@ -167,7 +163,7 @@ class LitleSource extends DataSource {
 		#$xml = preg_replace('#(<[^/>]*>)(<[^/>]*>)#', "\$1\n\$2", $xml);
 		#$xml = preg_replace('#(</[a-zA-Z0-9]*>)(</[a-zA-Z0-9]*>)#', "\$1\n\$2", $xml);
 		$function = __function__;
-		$this->log[] =compact('func', 'data', 'requestArray', 'xml');
+		$this->log[] = compact('func', 'data', 'requestArray', 'xml');
 		/* */
 		return $xml;
 	}
@@ -184,11 +180,7 @@ class LitleSource extends DataSource {
 		$response_array = array();
 		if (is_string($response)) {
 			$response_raw = $response;
-			if (!class_exists('Xml')) {
-				App::import("Core", "Xml");
-			}
-			$Xml = new Xml($response);
-			$response_array = $Xml->toArray();
+			$response_array = Xml::toArray(Xml::build($response));
 		} elseif (is_array($response_array)) {
 			$response_array = $response;
 			if (array_key_exists('response_raw', $response_array)) {
@@ -231,7 +223,7 @@ class LitleSource extends DataSource {
 	* @param object $Model optional
 	* @return mixed $response
 	*/
-	public function __request($data, &$Model=null) {
+	public function __request($data, Model $Model=null) {
 		$errors = array();
 		if (empty($data)) {
 			$errors[] = "Missing input data";

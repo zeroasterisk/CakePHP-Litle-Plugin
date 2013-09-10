@@ -16,6 +16,7 @@
 	debug($saleWorked);
 	debug($this->LitleSale->lastRequest);
 */
+App::uses('LitleAppModel', 'Litle.Model');
 class LitleSale extends LitleAppModel {
 	/**
 	* The name of this model

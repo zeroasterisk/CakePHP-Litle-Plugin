@@ -1,9 +1,9 @@
 <?php
-App::import('Datasource', 'litle.LitleSource');
-App::import('Model', 'litle.LitleSale');
-App::import('Lib', 'Templates.AppTestCase');
-App::import('Lib', 'litle.LitleUtil');
-class LitleSaleTestCase extends AppTestCase {
+App::uses('LitleSource','Litle.Model/Datasource');
+App::uses('LitleSale', 'Litle.Model');
+App::uses('LitleUtil', 'Litle.Lib');
+App::uses('Set', 'Utility');
+class LitleSaleTest extends CakeTestCase {
 	public $plugin = 'app';
 	public $fixtures = array();
 	protected $_testsToRun = array();
@@ -30,8 +30,9 @@ class LitleSaleTestCase extends AppTestCase {
 	public function startTest($method) {
 		parent::startTest($method);
 		$this->reconfigure();
-		$this->LitleSale =& ClassRegistry::init('LitleSale');
+		$this->LitleSale = ClassRegistry::init('Litle.LitleSale');
 		$this->LitleSale->useDbConfig = 'litle';
+		$this->LitleSale->useTable = false;
 	}
 	/**
 	* End Test callback
@@ -62,7 +63,7 @@ class LitleSaleTestCase extends AppTestCase {
 	*/
 	function testTranslateFields() {
 		$field_map = LitleUtil::getConfig('field_map');
-		$field_map = set::merge($field_map, array(
+		$field_map = Set::merge($field_map, array(
 			'id' 							=> array('unique_id'),
 			'orderId' 						=> array('bill_id', 'order_id'),
 			'billToAddress.name' 			=> array('bill_name'),
