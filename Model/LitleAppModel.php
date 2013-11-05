@@ -372,7 +372,7 @@ class LitleAppModel extends AppModel {
 		$nested = array();
 		foreach ( $data as $key => $val ) {
 			if (strpos($key, '.')!==false) {
-				$nested = set::insert($nested, $key, $val);
+				$nested = Set::insert($nested, $key, $val);
 				unset($data[$key]);
 			}
 		}
@@ -392,7 +392,7 @@ class LitleAppModel extends AppModel {
 		}
 		$defaults = LitleUtil::getConfig('defaults');
 		if (isset($defaults[$style]) && is_array($defaults[$style]) && !empty($defaults[$style])) {
-			$data = set::merge($defaults[$style], $data);
+			$data = Set::merge($defaults[$style], $data);
 		}
 		if (isset($this->_schema)) {
 			foreach ( array_keys($this->_schema) as $key ) {
@@ -422,7 +422,7 @@ class LitleAppModel extends AppModel {
 	/**
 	* Litle requires the XML data to be in a specific order :(
 	* As such, we need to make sure every node in our array is correctly ordered
-	* NOTE: this ends in a set::filter() which will remove all empty values (except for 0)
+	* NOTE: this ends in a Set::filter() which will remove all empty values (except for 0)
 	* @param array $data
 	* @param string $templateKey
 	* @param array $rootAttributes optional
@@ -450,7 +450,7 @@ class LitleAppModel extends AppModel {
 	/**
 	* Litle requires the XML data to be in a specific order :(
 	* As such, we need to make sure every node in our array is correctly ordered
-	* NOTE: this ends in a set::filter() which will remove all empty values (except for 0)
+	* NOTE: this ends in a Set::filter() which will remove all empty values (except for 0)
 	* @param array $data
 	* @param string $templateKey
 	* @return array $data
@@ -458,7 +458,7 @@ class LitleAppModel extends AppModel {
 	public function orderFields($data, $templateKey=null) {
 		// act on this node
 		if (array_key_exists($templateKey, $this->templates) && is_array($data)) {
-			$data = set::merge($this->templates[$templateKey], $data);
+			$data = Set::merge($this->templates[$templateKey], $data);
 		}
 		// recursivly act on all child nodes
 		foreach ( $data as $key => $val ) {
@@ -467,7 +467,7 @@ class LitleAppModel extends AppModel {
 			}
 		}
 		// clear all null elements (recursivly, so do this after recusion)
-		$data = set::filter($data);
+		$data = Set::filter($data);
 		if (!is_array($data)) {
 			$data = array();
 		}
