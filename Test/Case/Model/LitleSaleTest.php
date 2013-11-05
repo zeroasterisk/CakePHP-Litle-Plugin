@@ -1,4 +1,12 @@
 <?php
+/**
+* Unit Tests for Model/LitleSale (the main model for charges/sales)
+*
+* @link https://github.com/zeroasterisk/CakePHP-ArrayToXml-Lib
+* @author Alan Blount <alan@zeroasterisk.com>
+* @copyright (c) 2011 Alan Blount
+* @license MIT License - http://www.opensource.org/licenses/mit-license.php
+*/
 App::uses('LitleSource','Litle.Model/Datasource');
 App::uses('LitleSale', 'Litle.Model');
 App::uses('LitleUtil', 'Litle.Lib');

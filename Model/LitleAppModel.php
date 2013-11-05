@@ -272,7 +272,7 @@ class LitleAppModel extends AppModel {
 	* afterSave() parses the data
 	* logRequest() (optional) logs to
 	*/
-	function save($data = null, $validate = true, $fieldList = array()) {
+	public function save($data = null, $validate = true, $fieldList = array()) {
 		$return = parent::save($data);
 		$this->logRequest();
 		return $return;
@@ -280,18 +280,19 @@ class LitleAppModel extends AppModel {
 	/**
 	* beforeSave clears out $this->lastRequest
 	*/
-	function beforeSave($options=array()) {
+	public function beforeSave($options=array()) {
 		$this->lastRequest = $this->errors = array();
 		return parent::beforeSave($options);
 	}
 	/**
 	* afterSave parses results and verifies status for all transactions
 	* assumes $this->lastRequest exists and has the details for the LitleSource->__request()
+	*
 	* @param mixed $created
+	* @param array $options
 	* @return bool
 	*/
-	function afterSave($created=null) {
-		parent::afterSave($created);
+	public function afterSave($created=null, $options=array()) {
 		if (empty($this->lastRequest)) {
 			$this->lastRequest = array('status' => 'error', 'errors' => array("Unable to access {$this->Alias}->lastRequest"));
 			return false;
@@ -310,7 +311,7 @@ class LitleAppModel extends AppModel {
 			$status = "error";
 		}
 		$this->lastRequest = compact($this->requestVars);
-		return true;
+		return parent::afterSave($created, $options);
 	}
 	/**
 	* Logs the last request, if config includes a model to log with
@@ -320,7 +321,7 @@ class LitleAppModel extends AppModel {
 	* Can have method "save" as in: ModelName->save($lastRequest);
 	* @return mixed $saved or false
 	*/
-	function logRequest() {
+	public function logRequest() {
 		if (empty($this->lastRequest)) {
 			return false;
 		}
@@ -347,7 +348,7 @@ class LitleAppModel extends AppModel {
 	* @param string $style
 	* @return array $data
 	*/
-	function translateFields($data, $style=null) {
+	public function translateFields($data, $style=null) {
 		if (isset($data[$this->alias])) {
 			$data = array_merge($data, $data[$this->alias]);
 			unset($data[$this->alias]);
@@ -384,7 +385,7 @@ class LitleAppModel extends AppModel {
 	* @param string $style
 	* @return array $data
 	*/
-	function assignDefaults($data, $style=null) {
+	public function assignDefaults($data, $style=null) {
 		if (isset($data[$this->alias])) {
 			$data = array_merge($data, $data[$this->alias]);
 			unset($data[$this->alias]);
@@ -427,7 +428,7 @@ class LitleAppModel extends AppModel {
 	* @param array $rootAttributes optional
 	* @return array $data
 	*/
-	function finalizeFields($data, $templateKey=null, $rootAttributes=array()) {
+	public function finalizeFields($data, $templateKey=null, $rootAttributes=array()) {
 		// include only allowed fields (must be defined in the schema)
 		$stripped_data_keys = array_diff(array_keys($data), array_keys($this->_schema));
 		$data = array_intersect_key($data, $this->_schema);
@@ -454,7 +455,7 @@ class LitleAppModel extends AppModel {
 	* @param string $templateKey
 	* @return array $data
 	*/
-	function orderFields($data, $templateKey=null) {
+	public function orderFields($data, $templateKey=null) {
 		// act on this node
 		if (array_key_exists($templateKey, $this->templates) && is_array($data)) {
 			$data = set::merge($this->templates[$templateKey], $data);
@@ -483,7 +484,7 @@ class LitleAppModel extends AppModel {
 	* @param mixed $data
 	* @return mixed $data
 	*/
-	function cleanValues($data) {
+	public function cleanValues($data) {
 		if (is_array($data)) {
 			foreach ( $data as $key => $val ) {
 				if (is_array($val)) {
@@ -530,23 +531,28 @@ class LitleAppModel extends AppModel {
 	/**
 	* Overwrite of the exists() function
 	* means everything is a create() / new
+	*
+	* @param mixed $id (ignored)
+	* @return boolean [false]
 	*/
-	function exists() {
+	public function exists($id = null) {
 		return false;
 	}
 	/**
-	* Overwrite of the query() function
-	* error handling
+	* Overwrite of the query() function - used as error handling
+	*
+	* @param string $sql
+	* @return boolean
 	*/
-	function query() {
-		die("Sorry, bad method call on {$this->alias}");
+	public function query($sql = null) {
+		throw new OutOfBoundsException("{$this->alias}::{$sql} - Sorry, bad method call");
 	}
 	/**
 	* Helper shortcut for commonly used number_format() call
 	* @param mixed $number
 	* @return string $formatted_number
 	*/
-	function num($number) {
+	public function num($number) {
 		if (is_string($number) && is_numeric($number)) {
 			if (strpos('.', $number)!==false) {
 				return number_format(floatval($number), 0, '.', '');

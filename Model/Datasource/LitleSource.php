@@ -64,7 +64,7 @@ class LitleSource extends DataSource {
 		$this->Http = new HttpSocket();
 	}
 	/**
-	* Override of the basic describe() function 
+	* Override of the basic describe() function
 	* @param object $model
 	* @return array $_schema
 	*/
@@ -108,6 +108,15 @@ class LitleSource extends DataSource {
 	*/
 	public function delete(Model $Model, $id = null) {
 		return false;
+	}
+	/**
+	* Overwrite of the query() function - used as error handling
+	*
+	* @param string $sql
+	* @return boolean
+	*/
+	public function query($sql = null) {
+		throw new OutOfBoundsException("LitleSource::{$sql} - Sorry, bad method call");
 	}
 	/**
 	* Translate keys to a value Litle.net expects in posted data, as well as encapsulating where relevant. Returns false
@@ -169,6 +178,7 @@ class LitleSource extends DataSource {
 	}
 	/**
 	* Parse the response data from a post to authorize.net
+	*
 	* @param string $response
 	* @param object $Model
 	* @return array
@@ -196,6 +206,8 @@ class LitleSource extends DataSource {
 		} elseif (array_key_exists('LitleOnlineResponse', $response_array)) {
 			$response_array = $response_array['LitleOnlineResponse'];
 		}
+		// re-format, remove the '@' prefixes
+		$response_array = $this->parseResponseCleanAttr($response_array);
 		// verify response_array
 		if (!is_array($response_array)) {
 			$errors[] = 'Response is not formatted as an Array';
@@ -204,7 +216,7 @@ class LitleSource extends DataSource {
 		}
 		if (array_key_exists('message', $response_array) && $response_array['message']!='Valid Format') {
 			$errors[] = $response_array['message'];
-		} elseif (intval($response_array['response'])!==0) {
+		} elseif (!array_key_exists('response', $response_array) || intval($response_array['response'])!==0) {
 			$errors[] = 'Response.response indicates request xml is in-valid, unknown Message';
 		}
 		if (empty($errors)) {
@@ -214,6 +226,23 @@ class LitleSource extends DataSource {
 		}
 		return compact('status', 'transaction_id', 'errors', 'response_array', 'response_raw');
 	}
+
+	/**
+	 * Response arrays may have fields/keys with a '@' prefix -- remove those
+	 *
+	 * @param array $response_array
+	 * @return array $response_array
+	 */
+	public function parseResponseCleanAttr($response_array) {
+		foreach (array_keys($response_array) as $key) {
+			if (substr($key, 0, 1) == '@') {
+				$response_array[str_replace('@', '', $key)] = $response_array[$key];
+				unset($response_array[$key]);
+			}
+		}
+		return $response_array;
+	}
+
 	/**
 	*
 	* Post data to authorize.net. Returns false if there is an error,

@@ -1,17 +1,20 @@
 <?php
-/* LitleSource */
+/**
+* Unit Tests for Model/Datasource/LitleSource
+*
+* @link https://github.com/zeroasterisk/CakePHP-ArrayToXml-Lib
+* @author Alan Blount <alan@zeroasterisk.com>
+* @copyright (c) 2011 Alan Blount
+* @license MIT License - http://www.opensource.org/licenses/mit-license.php
+*/
+App::uses('LitleSource','Litle.Model/Datasource');
 # import model because that's how the datasource it inited
-App::import('Datasource', 'litle.LitleSource');
-App::import('Model', 'litle.LitleTransaction');
-App::import('Lib', 'Templates.AppTestCase');
-# these details should be set in your config, but can be overridden here
-# configure::write('Litle.user', '******');
-# configure::write('Litle.password', '******');
-# configure::write('Litle.merchantId', '******');
-# probably always a good idea to override the URL to hit the cert URL
-configure::write('Litle.url', 'https://cert.litle.com/vap/communicator/online');
-configure::write('Litle.logModel', false);
-class LitleSourceTestCase extends AppTestCase {
+App::uses('LitleAppModel', 'Litle.Model');
+App::uses('LitleTransaction', 'Litle.Model');
+App::uses('LitleUtil', 'Litle.Lib');
+App::uses('Set', 'Utility');
+
+class LitleSourceTest extends CakeTestCase {
 	public $plugin = 'app';
 	public $fixtures = array();
 	protected $_testsToRun = array();
@@ -98,8 +101,16 @@ class LitleSourceTestCase extends AppTestCase {
 	* @return void
 	* @access public
 	*/
-	function startTest(){
+	public function startTest($method) {
+		parent::startTest($method);
 		$this->LitleSource = new LitleSource();
+		# these details should be set in your config, but can be overridden here
+		# Configure::write('Litle.user', '******');
+		# Configure::write('Litle.password', '******');
+		# Configure::write('Litle.merchantId', '******');
+		# probably always a good idea to override the URL to hit the cert URL
+		Configure::write('Litle.url', 'https://cert.litle.com/vap/communicator/online');
+		Configure::write('Litle.logModel', false);
 	}
 
 	/**
@@ -118,7 +129,7 @@ class LitleSourceTestCase extends AppTestCase {
 	/**
 	* Validate the plugin setup
 	*/
-	function testSetup() {
+	public function testSetup() {
 		$this->assertTrue(is_object($this->LitleSource));
 		$this->assertTrue(is_object($this->LitleSource->Http));
 		$plugin_version = LitleUtil::getConfig('plugin_version');
@@ -133,7 +144,7 @@ class LitleSourceTestCase extends AppTestCase {
 	/**
 	* Validate prepApiData functionality
 	*/
-	function testPrepApiData() {
+	public function testPrepApiData() {
 		// set only the sale node, the auth and wrapper should be set in the function
 		// the mockup data assumes we are giving the function exactly what it expected
 		$response = str_replace(array("\n", "	"), '', $this->LitleSource->prepareApiData($this->sale));
@@ -225,7 +236,7 @@ class LitleSourceTestCase extends AppTestCase {
 	/**
 	* Validate parseResponse functionality
 	*/
-	function testParseResponse() {
+	public function testParseResponse() {
 		$sale_response_xml = str_replace(array("\n", "	"), '', '
 			<saleResponse id="1" reportGroup="ABC Division" customerId="038945">
 				<litleTxnId>1100030055</litleTxnId>
@@ -277,9 +288,20 @@ class LitleSourceTestCase extends AppTestCase {
 		$this->assertEqual($response_check, $expected);
 	}
 	/**
+	 *
+	 */
+	public function testQuery() {
+		try {
+			$this->LitleSource->query('badMethod');
+			$this->fail('Expected Exception here');
+		} catch (Exception $e) {
+			$this->AssertEqual('LitleSource::badMethod - Sorry, bad method call', $e->getMessage());
+		}
+	}
+	/**
 	* Validate __request functionality
 	*/
-	function test__request() {
+	public function test__request() {
 		$request = $this->LitleSource->__request($this->sale);
 		$this->AssertEqual($request['status'], "good");
 		$this->AssertEqual($request['errors'], array());
@@ -302,7 +324,6 @@ class LitleSourceTestCase extends AppTestCase {
 				'cardValidationResult' => 'M',
 				),
 			);
-		
 		$litleTxnId = $reponse['SaleResponse']['litleTxnId'];
 		unset($reponse['SaleResponse']['litleTxnId']);
 		$this->AssertTrue($litleTxnId > 10000000, "Transaction ID not large enough [$litleTxnId]");
@@ -310,4 +331,4 @@ class LitleSourceTestCase extends AppTestCase {
 	}
 	/*  */
 }
-?>
+

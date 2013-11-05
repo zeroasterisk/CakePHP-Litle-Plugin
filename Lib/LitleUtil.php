@@ -1,6 +1,6 @@
 <?php
 /**
-* Helper class to preform some basic tasks. 
+* Helper class to preform some basic tasks.
 *
 */
 class LitleUtil extends Object {
@@ -20,7 +20,7 @@ class LitleUtil extends Object {
 		# Litle API Settings
 		'version' => '8.7',
 		'url_xmlns' => 'http://www.litle.com/schema',
-		# Other configuration should be set in app/config/litle.php 
+		# Other configuration should be set in app/config/litle.php
 		'url' => NULL,
 		'user' => NULL,
 		'password' => NULL,
@@ -64,10 +64,10 @@ class LitleUtil extends Object {
 	*/
 	static public function setConfig($key = null, $value = null) {
 		if (strpos($key, '.')!==false) {
-			self::$config = set::insert(self::$config, $key, $value);
+			self::$config = Set::insert(self::$config, $key, $value);
 		}
 		self::$config[$key] = $value;
-		return configure::write("Litle.$key", $value);
+		return Configure::write("Litle.$key", $value);
 	}
 }
 ?>
