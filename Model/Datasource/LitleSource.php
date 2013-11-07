@@ -177,7 +177,7 @@ class LitleSource extends DataSource {
 		return $xml;
 	}
 	/**
-	* Parse the response data from a post to authorize.net
+	* Parse the response data from a post
 	*
 	* @param string $response
 	* @param object $Model
