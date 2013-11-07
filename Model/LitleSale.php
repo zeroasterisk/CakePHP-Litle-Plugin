@@ -148,6 +148,8 @@ class LitleSale extends LitleAppModel {
 		extract($this->lastRequest);
 		if (isset($response_array['SaleResponse'])) {
 			$response_array = set::flatten($response_array['SaleResponse']);
+		} elseif (isset($response_array['saleResponse'])) {
+			$response_array = set::flatten($response_array['saleResponse']);
 		}
 		extract($response_array);
 		$this->id = $transaction_id = (!empty($litleTxnId) ? $litleTxnId : 0);

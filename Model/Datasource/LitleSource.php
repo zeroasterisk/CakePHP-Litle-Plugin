@@ -18,6 +18,13 @@ App::uses('LitleUtil','Litle.Lib');
 App::uses('HttpSocket', 'Network/Http');
 App::uses('ArrayToXml', 'Litle.Lib');
 App::uses('Xml', 'Utility');
+
+/**
+ * LitleException Class
+ */
+class LitleException extends Exception {
+}
+
 class LitleSource extends DataSource {
 	/**
 	* The description of this data source
@@ -190,7 +197,11 @@ class LitleSource extends DataSource {
 		$response_array = array();
 		if (is_string($response)) {
 			$response_raw = $response;
-			$response_array = Xml::toArray(Xml::build($response));
+			try {
+				$response_array = Xml::toArray(Xml::build($response_raw));
+			} catch (XmlException $e) {
+				throw new LitleException($e->getMessage());
+			}
 		} elseif (is_array($response_array)) {
 			$response_array = $response;
 			if (array_key_exists('response_raw', $response_array)) {
@@ -198,7 +209,7 @@ class LitleSource extends DataSource {
 				unset($response_array['response_raw']);
 			}
 		} else {
-			$errors[] = 'Response is in invalid format';
+			throw new LitleException('Response is in invalid format');
 		}
 		// boil down to just the response we are interested in
 		if (array_key_exists('litleOnlineResponse', $response_array)) {
@@ -207,12 +218,13 @@ class LitleSource extends DataSource {
 			$response_array = $response_array['LitleOnlineResponse'];
 		}
 		// re-format, remove the '@' prefixes
-		$response_array = $this->parseResponseCleanAttr($response_array);
+		$response_array = $this->responseCleanAttr($response_array);
 		// verify response_array
 		if (!is_array($response_array)) {
-			$errors[] = 'Response is not formatted as an Array';
-		} elseif (!array_key_exists('response', $response_array)) {
-			$errors[] = 'Response.response missing (request xml validity)';
+			throw new LitleException('Response is not formatted as an Array');
+		}
+		if (!array_key_exists('response', $response_array)) {
+			throw new LitleException('Response.response missing (request xml validity)');
 		}
 		if (array_key_exists('message', $response_array) && $response_array['message']!='Valid Format') {
 			$errors[] = $response_array['message'];
@@ -230,28 +242,34 @@ class LitleSource extends DataSource {
 	/**
 	 * Response arrays may have fields/keys with a '@' prefix -- remove those
 	 *
-	 * @param array $response_array
-	 * @return array $response_array
+	 * @param array $array
+	 * @return array $array
 	 */
-	public function parseResponseCleanAttr($response_array) {
-		foreach (array_keys($response_array) as $key) {
-			if (substr($key, 0, 1) == '@') {
-				$response_array[str_replace('@', '', $key)] = $response_array[$key];
-				unset($response_array[$key]);
+	public function responseCleanAttr($array) {
+		if (!is_array($array)) {
+			return $array;
+		}
+		foreach (array_keys($array) as $key) {
+			if (is_array($array[$key])) {
+				$array[$key] = $this->responseCleanAttr($array[$key]);
+			}
+			if (substr(trim($key), 0, 1) == '@') {
+				$array[str_replace('@', '', trim($key))] = $array[$key];
+				unset($array[$key]);
 			}
 		}
-		return $response_array;
+		return $array;
 	}
 
 	/**
-	*
-	* Post data to authorize.net. Returns false if there is an error,
-	* or an array of the parsed response from authorize.net if valid
-	*
-	* @param array $request
-	* @param object $Model optional
-	* @return mixed $response
-	*/
+	 *
+	 * Post data to authorize.net. Returns false if there is an error,
+	 * or an array of the parsed response from authorize.net if valid
+	 *
+	 * @param array $request
+	 * @param object $Model optional
+	 * @return mixed $response
+	 */
 	public function __request($data, Model $Model=null) {
 		$errors = array();
 		if (empty($data)) {
@@ -268,12 +286,14 @@ class LitleSource extends DataSource {
 		if (empty($errors)) {
 			$this->Http->reset();
 			$url = LitleUtil::getConfig('url');
-			$response_raw = $this->Http->post($url, $request_raw, array(
+			$requestOptions = array(
 				'header' => array(
 					'Connection' => 'close',
 					'User-Agent' => 'CakePHP Litle Plugin v.'.LitleUtil::getConfig('version'),
-					)
-				));
+				)
+			);
+			$response = $this->Http->post($url, $request_raw, $requestOptions);
+			$response_raw = $response->body;
 			if ($this->Http->response['status']['code'] != 200) {
 				$errors[] = "LitleSource: Error: Could not connect to authorize.net... bad credentials?";
 			}
@@ -292,6 +312,7 @@ class LitleSource extends DataSource {
 		}
 		// compact response array
 		$return = compact('type', 'status', 'transaction_id', 'litleToken', 'errors', 'data', 'request_raw', 'response_array', 'response_raw', 'url');
+		$this->lastRequest = $return;
 		// assign to model if set
 		if (is_object($Model)) {
 			$Model->lastRequest = $return;
@@ -303,11 +324,11 @@ class LitleSource extends DataSource {
 		return $return;
 	}
 	/**
-	* Recursivly look through an array to find a specific key
-	* @param string $needle key to find in the array
-	* @param array $haystack array to search through
-	* @return mixed $output
-	*/
+	 * Recursivly look through an array to find a specific key
+	 * @param string $needle key to find in the array
+	 * @param array $haystack array to search through
+	 * @return mixed $output
+	 */
 	function array_find($needle=null, $haystack=null) {
 		if (array_key_exists($needle, $haystack)) {
 			return $haystack[$needle];
