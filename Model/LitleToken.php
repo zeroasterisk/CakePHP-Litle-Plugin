@@ -1,24 +1,24 @@
 <?php
 /**
-* Plugin model for "Litle Credit Card Tokenization".
-*
-* offloading of CC management to Litle
-*
-* @author Alan Blount <alan@zeroasterisk.com>
-* @link https://github.com/zeroasterisk/CakePHP-Litle-Plugin
-* @copyright (c) 2011 Alan Blount
-* @license MIT License - http://www.opensource.org/licenses/mit-license.php
-*/
+ * Plugin model for "Litle Credit Card Tokenization".
+ *
+ * offloading of CC management to Litle
+ *
+ * @author Alan Blount <alan@zeroasterisk.com>
+ * @link https://github.com/zeroasterisk/CakePHP-Litle-Plugin
+ * @copyright (c) 2011 Alan Blount
+ * @license MIT License - http://www.opensource.org/licenses/mit-license.php
+ */
 class LitleToken extends LitleAppModel {
 	/**
-	* The name of this model
-	* @var name
-	*/
+	 * The name of this model
+	 * @var name
+	 */
 	public $name ='LitleToken';
 	/**
-	* The fields and their types for the form helper
-	* @var array
-	*/
+	 * The fields and their types for the form helper
+	 * @var array
+	 */
 	public $_schema = array(
 		// sale attributes
 		'id' => array('type' => 'string', 'length' => '25', 'comment' => 'unique transaction id (determines duplicates)'),
@@ -31,14 +31,14 @@ class LitleToken extends LitleAppModel {
 		'orderId' => array('type' => 'string', 'length' => '25', 'comment' => 'optional'),
 		// extra field to create root level element
 		'root' => array('type' => 'blob'),
-		);
+	);
 	/**
-	* Initially setup a token from an account number
-	* note: usually not needed, since transactions are tokenized automatically
-	* note: assumes all other details are defaulted from config
-	* @param int $account_number
-	* @return int $token
-	*/
+	 * Initially setup a token from an account number
+	 * note: usually not needed, since transactions are tokenized automatically
+	 * note: assumes all other details are defaulted from config
+	 * @param int $account_number
+	 * @return int $token
+	 */
 	public function register($account_number) {
 		$this->save(array('accountNumber' => $account_number));
 		if (isset($this->lastRequest['response_array']['litleToken']) && substr($account_number, -4) == substr($this->lastRequest['response_array']['litleToken'], -4)) {
@@ -46,13 +46,14 @@ class LitleToken extends LitleAppModel {
 		}
 		return 0;
 	}
+
 	/**
-	* beforeSave reconfigures save inputs for "sale" transactions
-	* assumes LitleSale->data exists and has the details for the save()
-	* @param array $options
-	* @return array $response
-	*/
-	function beforeSave($options=array()) {
+	 * beforeSave reconfigures save inputs for "sale" transactions
+	 * assumes LitleSale->data exists and has the details for the save()
+	 * @param array $options
+	 * @return array $response
+	 */
+	public function beforeSave($options=array()) {
 		$config = set::merge($this->config, $options);
 		$errors = array();
 		// setup defaults so elements are in the right order.
@@ -66,15 +67,18 @@ class LitleToken extends LitleAppModel {
 		$rootAttributes = compact('id', 'customerId', 'reportGroup');
 		$data = $this->finalizeFields($data, 'registerTokenRequest', $rootAttributes);
 		$this->data = array($this->alias => $data);
-		return true;
+		return parent::beforeSave($options);
 	}
+
 	/**
-	* afterSave parses results and verifies status for this transaction
-	* assumes LitleSale->lastRequest exists and has the details for this request
-	* @param array $options
-	* @return array $response
-	*/
-	function afterSave($created=null) {
+	 * afterSave parses results and verifies status for this transaction
+	 * assumes LitleSale->lastRequest exists and has the details for this request
+	 *
+	 * @param boolean $created
+	 * @param array $options
+	 * @return array $response
+	 */
+	public function afterSave($created=null, $options = array()) {
 		parent::afterSave($created);
 		if (empty($this->lastRequest)) {
 			$this->lastRequest = array('status' => 'error', 'errors' => array("Unable to access {$this->Alias}->lastRequest"));
@@ -99,4 +103,4 @@ class LitleToken extends LitleAppModel {
 		return true;
 	}
 }
-?>
+

@@ -3,7 +3,7 @@ App::uses('LitleSource','Litle.Model/Datasource');
 App::uses('LitleSale', 'Litle.Model');
 App::uses('LitleUtil', 'Litle.Lib');
 App::uses('Set', 'Utility');
-class LitleVoidTest extends CakeTestCase {
+class LitleTokenTest extends CakeTestCase {
 	public $plugin = 'app';
 	public $fixtures = array();
 	protected $_testsToRun = array();
@@ -31,7 +31,7 @@ class LitleVoidTest extends CakeTestCase {
 	public function startTest($method) {
 		parent::startTest($method);
 		$this->reconfigure();
-		$this->LitleVoid = ClassRegistry::init('Litle.LitleVoid');
+		$this->LitleToken = ClassRegistry::init('Litle.LitleToken');
 		$this->LitleSale = ClassRegistry::init('Litle.LitleSale');
 		$this->LitleSale->useDbConfig = 'litle';
 		$this->LitleSale->useTable = false;
@@ -45,7 +45,7 @@ class LitleVoidTest extends CakeTestCase {
 	*/
 	public function endTest($method) {
 		parent::endTest($method);
-		unset($this->LitleVoid);
+		unset($this->LitleToken);
 		unset($this->LitleSale);
 		ClassRegistry::flush();
 	}
@@ -54,9 +54,9 @@ class LitleVoidTest extends CakeTestCase {
 	* Validate the plugin setup
 	*/
 	public function testSetup() {
-		$this->assertTrue(is_object($this->LitleVoid));
-		$this->assertEqual($this->LitleVoid->alias, 'LitleVoid');
-		$this->assertTrue(empty($this->LitleVoid->useTable));
+		$this->assertTrue(is_object($this->LitleToken));
+		$this->assertEqual($this->LitleToken->alias, 'LitleToken');
+		$this->assertTrue(empty($this->LitleToken->useTable));
 		$config_user = LitleUtil::getConfig('user');
 		$this->assertFalse(empty($config_user), "You are missing the configuration Username");
 		$config_password = LitleUtil::getConfig('password');
