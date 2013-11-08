@@ -264,19 +264,24 @@ class LitleAppModel extends AppModel {
 	public function __construct($config=array()) {
 		parent::__construct($config);
 	}
+
 	/**
-	* Overwrite of the save method
-	* All work is really done by
-	* beforeSave() preps the data
-	* parent::save() --> LitleSource does the API request
-	* afterSave() parses the data
-	* logRequest() (optional) logs to
-	*/
+	 * Overwrite of the save method
+	 * All work is really done by
+	 * beforeSave() preps the data
+	 * parent::save() --> LitleSource does the API request
+	 * afterSave() parses the data
+	 * logRequest() (optional) logs to
+	 */
 	public function save($data = null, $validate = true, $fieldList = array()) {
+		// do the basic save (Model -> Datasource)
 		$return = parent::save($data);
+		// log the result
 		$logged = $this->logRequest();
+		// return the $return value
 		return $return;
 	}
+
 	/**
 	* beforeSave clears out $this->lastRequest
 	*/
@@ -323,12 +328,10 @@ class LitleAppModel extends AppModel {
 	 * @return boolean
 	 */
 	public function logRequest() {
-		debug('logRequest');
 		if (empty($this->lastRequest)) {
 			return null;
 		}
 		$logModel = LitleUtil::getConfig('logModel');
-		debug(compact('logModel'));
 		if (empty($logModel) || !is_string($logModel)) {
 			return null;
 		}
