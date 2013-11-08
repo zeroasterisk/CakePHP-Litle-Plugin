@@ -274,7 +274,7 @@ class LitleAppModel extends AppModel {
 	*/
 	public function save($data = null, $validate = true, $fieldList = array()) {
 		$return = parent::save($data);
-		$this->logRequest();
+		$logged = $this->logRequest();
 		return $return;
 	}
 	/**
@@ -290,7 +290,7 @@ class LitleAppModel extends AppModel {
 	*
 	* @param mixed $created
 	* @param array $options
-	* @return bool
+	* @return boolean
 	*/
 	public function afterSave($created=null, $options=array()) {
 		if (empty($this->lastRequest)) {
@@ -314,30 +314,44 @@ class LitleAppModel extends AppModel {
 		return parent::afterSave($created, $options);
 	}
 	/**
-	* Logs the last request, if config includes a model to log with
-	* This method is called within the afterSave() at the end
-	* Can have method "logLitleRequest" as in: ModelName->logLitleRequest($lastRequest);
-	* Can have method "logRequest" as in: ModelName->logRequest($lastRequest);
-	* Can have method "save" as in: ModelName->save($lastRequest);
-	* @return mixed $saved or false
-	*/
+	 * Logs the last request, if config includes a model to log with
+	 * This method is called within the afterSave() at the end
+	 * Can have method "logLitleRequest" as in: ModelName->logLitleRequest($lastRequest);
+	 * Can have method "logRequest" as in: ModelName->logRequest($lastRequest);
+	 * Can have method "save" as in: ModelName->save($lastRequest);
+	 *
+	 * @return boolean
+	 */
 	public function logRequest() {
+		debug('logRequest');
 		if (empty($this->lastRequest)) {
-			return false;
+			return null;
 		}
 		$logModel = LitleUtil::getConfig('logModel');
-		if (!empty($logModel) && is_string($logModel)) {
-			App::import('Model', $logModel);
-			$LogModel =  ClassRegistry::init($logModel);
-			if (method_exists($LogModel, 'logLitleRequest')) {
-				return $LogModel->logLitleRequest($this->lastRequest);
-			} elseif (method_exists($LogModel, 'logRequest')) {
-				return $LogModel->logRequest($this->lastRequest);
-			} elseif (method_exists($LogModel, 'save')) {
-				return $LogModel->save($this->lastRequest);
-			}
+		debug(compact('logModel'));
+		if (empty($logModel) || !is_string($logModel)) {
+			return null;
 		}
-		return false;
+		App::uses($logModel, 'Model');
+		$LogModel =  ClassRegistry::init($logModel);
+		if (empty($LogModel) || !is_object($LogModel)) {
+			throw new LitleException('LitleAppModel::logRequest() unable to initialize ' . $logModel);
+		}
+		$method = 'save';
+		if (method_exists($LogModel, 'logLitleRequest')) {
+			$method = 'logLitleRequest';
+		} elseif (method_exists($LogModel, 'logRequest')) {
+			$method = 'logRequest';
+		}
+		$LogModel->create(false);
+		if (!$LogModel->$method($this->lastRequest)) {
+			throw new LitleException(sprintf('LitleAppModel::logRequest() unable to log transaction via %s::%s() %s',
+				$LogModel->alias,
+				$method,
+				json_encode($LogModel->validationErrors)
+			));
+		}
+		return true;
 	}
 	/**
 	* Re-arrange fields which coule be passed in a single-dim array
