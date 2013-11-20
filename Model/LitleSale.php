@@ -146,10 +146,15 @@ class LitleSale extends LitleAppModel {
 			return false;
 		}
 		extract($this->lastRequest);
-		if (isset($response_array['SaleResponse'])) {
-			$response_array = set::flatten($response_array['SaleResponse']);
-		} elseif (isset($response_array['saleResponse'])) {
-			$response_array = set::flatten($response_array['saleResponse']);
+		// extract the "important parts" from any response
+		$keys = array(
+			'saleResponse', 'voidResponse', 'creditReponse',
+			'SaleResponse', 'VoidResponse', 'CreditReponse',
+		);
+		foreach ($keys as $key) {
+			if (array_key_exists($key, $response_array)) {
+				$response_array = Set::flatten($response_array[$key]);
+			}
 		}
 		extract($response_array);
 		$this->id = $transaction_id = (!empty($litleTxnId) ? $litleTxnId : 0);
