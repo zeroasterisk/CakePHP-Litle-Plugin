@@ -1,17 +1,25 @@
 <?php
-App::import('Datasource', 'litle.LitleSource');
-App::import('Model', 'litle.LitleSale');
-App::import('Lib', 'Templates.AppTestCase');
-App::import('Lib', 'litle.LitleUtil');
-class LitleSaleTestCase extends AppTestCase {
+/**
+ * Unit Tests for Model/LitleSale (the main model for charges/sales)
+ *
+ * @link https://github.com/zeroasterisk/CakePHP-ArrayToXml-Lib
+ * @author Alan Blount <alan@zeroasterisk.com>
+ * @copyright (c) 2011 Alan Blount
+ * @license MIT License - http://www.opensource.org/licenses/mit-license.php
+ */
+App::uses('LitleSource','Litle.Model/Datasource');
+App::uses('LitleSale', 'Litle.Model');
+App::uses('LitleUtil', 'Litle.Lib');
+App::uses('Set', 'Utility');
+class LitleSaleTest extends CakeTestCase {
 	public $plugin = 'app';
 	public $fixtures = array();
 	protected $_testsToRun = array();
 	/**
-	* Reset various configurations for testing
-	* (has to be done here, instead of before the class loading)
-	*/
-	function reconfigure() {
+	 * Reset various configurations for testing
+	 * (has to be done here, instead of before the class loading)
+	 */
+	public function reconfigure() {
 		# these details should be set in your config, but can be overridden here
 		# LitleUtil::$config['user'] = '******';
 		# LitleUtil::$config['password'] = '******';
@@ -21,34 +29,35 @@ class LitleSaleTestCase extends AppTestCase {
 		LitleUtil::$config['logModel'] = false;
 	}
 	/**
-	* Start Test callback
-	*
-	* @param string $method
-	* @return void
-	* @access public
-	*/
+	 * Start Test callback
+	 *
+	 * @param string $method
+	 * @return void
+	 * @access public
+	 */
 	public function startTest($method) {
 		parent::startTest($method);
 		$this->reconfigure();
-		$this->LitleSale =& ClassRegistry::init('LitleSale');
+		$this->LitleSale = ClassRegistry::init('Litle.LitleSale');
 		$this->LitleSale->useDbConfig = 'litle';
+		$this->LitleSale->useTable = false;
 	}
 	/**
-	* End Test callback
-	*
-	* @param string $method
-	* @return void
-	* @access public
-	*/
+	 * End Test callback
+	 *
+	 * @param string $method
+	 * @return void
+	 * @access public
+	 */
 	public function endTest($method) {
 		parent::endTest($method);
 		unset($this->LitleSale);
 		ClassRegistry::flush();
 	}
 	/**
-	* Validate the plugin setup
-	*/
-	function testSetup() {
+	 * Validate the plugin setup
+	 */
+	public function testSetup() {
 		$this->assertTrue(is_object($this->LitleSale));
 		$this->assertEqual($this->LitleSale->alias, 'LitleSale');
 		$this->assertTrue(empty($this->LitleSale->useTable));
@@ -58,11 +67,11 @@ class LitleSaleTestCase extends AppTestCase {
 		$this->assertFalse(empty($config_password), "You are missing the configuration Password");
 	}
 	/**
-	* Validate translate fields
-	*/
-	function testTranslateFields() {
+	 * Validate translate fields
+	 */
+	public function testTranslateFields() {
 		$field_map = LitleUtil::getConfig('field_map');
-		$field_map = set::merge($field_map, array(
+		$field_map = Set::merge($field_map, array(
 			'id' 							=> array('unique_id'),
 			'orderId' 						=> array('bill_id', 'order_id'),
 			'billToAddress.name' 			=> array('bill_name'),
@@ -77,7 +86,7 @@ class LitleSaleTestCase extends AppTestCase {
 			'card.number'					=> array('cc_account', 'funky_card_account'),
 			'card.expDate'					=> array('cc_expires', 'funky_card_exp'),
 			'card.cardValidationNum'		=> array('funky_card_cvv'),
-			));
+		));
 		LitleUtil::setConfig('field_map', $field_map);
 		$data = array(
 			'id' => 'shouldStay',
@@ -92,13 +101,13 @@ class LitleSaleTestCase extends AppTestCase {
 				'addressLine1' => '123 4th street',
 				'city' => 'San Jose',
 				'state' => 'CA',
-				),
+			),
 			'billToAddress.addressLine2' => 'Apt. 20',
 			'billToAddress.city' => 'should not overwrite', // in place above
 			'billToAddress.state' => 'CA', // in place above
 			'billToAddress.zip' => '95032', // missing above
 			'billToAddress.country' => 'USA', // missing above
-			);
+		);
 		$this->__deep_shuffle($data);
 		$response = $this->LitleSale->translateFields($data);
 		$expected = array(
@@ -109,7 +118,7 @@ class LitleSaleTestCase extends AppTestCase {
 				'expDate' => '1110',
 				'type' => 'MC',
 				'cardValidationNum' => '321',
-				),
+			),
 			'billToAddress' => array(
 				'name' => 'John Doe',
 				'addressLine1' => '123 4th street',
@@ -118,17 +127,17 @@ class LitleSaleTestCase extends AppTestCase {
 				'country' => 'USA',
 				'state' => 'CA',
 				'zip' => '95032',
-				),
+			),
 			'name' => 'Bubba Doe',
-			);
+		);
 		$this->__deep_ksort($response);
 		$this->__deep_ksort($expected);
 		$this->assertEqual($response, $expected);
 	}
 	/**
-	* Validate simple sale
-	*/
-	function testSaleSimple() {
+	 * Validate simple sale
+	 */
+	public function testSaleSimple() {
 		$sale = array(
 			'reportGroup' => 'test',
 			'orderId' => '0987654321',
@@ -139,7 +148,7 @@ class LitleSaleTestCase extends AppTestCase {
 				'number' => '4457010000000009',
 				'expDate' => '0112',
 				'cardValidationNum' => '349',
-				),
+			),
 			'billToAddress' => array(
 				'name' => 'John Doe',
 				'addressLine1' => '123 4th street',
@@ -148,8 +157,8 @@ class LitleSaleTestCase extends AppTestCase {
 				'state' => 'CA',
 				'zip' => '95032',
 				'country' => 'USA',
-				),
-			);
+			),
+		);
 		$saved = $this->LitleSale->save($sale);
 		$response = $this->LitleSale->lastRequest;
 		$transaction_id = $this->LitleSale->id;
@@ -159,10 +168,10 @@ class LitleSaleTestCase extends AppTestCase {
 		$this->AssertTrue($this->LitleSale->delete($this->LitleSale->id));
 	}
 	/**
-	* Validate litle tests for sale
-	*/
+	 * Validate litle tests for sale
+	 */
 	/*  */
-	function test1() {
+	public function test1() {
 		$sale = array(
 			'reportGroup' => 'test',
 			'orderId' => '1',
@@ -177,14 +186,14 @@ class LitleSaleTestCase extends AppTestCase {
 			'card_number' => '4457010000000009',
 			'card_expdate' => '0112',
 			'card_cvv' => '349',
-			);
+		);
 		$expected = array(
 			'response' => '000',
 			'message' => 'Approved',
 			'authCode' => '11111',
 			//'FraudResult.avsResult' => '01', // getting 11?
 			'FraudResult.cardValidationResult' => 'M',
-			);
+		);
 		$response = $this->LitleSale->save($sale);
 		$this->AssertTrue($this->LitleSale->id > 111111111111111111);
 		$this->AssertTrue($this->LitleSale->lastRequest['transaction_id']==$this->LitleSale->id);
@@ -199,7 +208,7 @@ class LitleSaleTestCase extends AppTestCase {
 		$expected = array(
 			'response' => '000',
 			'message' => 'Approved',
-			);
+		);
 		$this->AssertTrue(empty($this->LitleSale->lastRequest['errors']));
 		foreach ( $expected as $key => $val ) {
 			$this->AssertEqual($this->LitleSale->lastRequest['response_array'][$key], $val);
@@ -208,7 +217,7 @@ class LitleSaleTestCase extends AppTestCase {
 		$this->AssertTrue(!empty($this->LitleSale->lastRequest['response_array']['postDate']));
 	}
 	/*  */
-	function test2() {
+	public function test2() {
 		$sale = array(
 			'reportGroup' => 'test',
 			'orderId' => '2',
@@ -225,7 +234,7 @@ class LitleSaleTestCase extends AppTestCase {
 			'card_expdate' => '0212',
 			'card_cvv' => '261',
 			'authenticationValue' => 'BwABBJQ1AgAAAAAgJDUCAAAAAAA=',
-			);
+		);
 		$expected = array(
 			'response' => '000',
 			'message' => 'Approved',
@@ -233,7 +242,7 @@ class LitleSaleTestCase extends AppTestCase {
 			//'FraudResult.avsResult' => '01',
 			'FraudResult.cardValidationResult' => 'M',
 			//'FraudResult.authenticationResult' => 'Note: Not returned for MasterCard',
-			);
+		);
 		$response = $this->LitleSale->save($sale);
 		$this->AssertTrue($this->LitleSale->id > 111111111111111111);
 		$this->AssertTrue($this->LitleSale->lastRequest['transaction_id']==$this->LitleSale->id);
@@ -248,7 +257,7 @@ class LitleSaleTestCase extends AppTestCase {
 		$expected = array(
 			'response' => '000',
 			'message' => 'Approved',
-			);
+		);
 		$this->AssertTrue(empty($this->LitleSale->lastRequest['errors']));
 		foreach ( $expected as $key => $val ) {
 			$this->AssertEqual($this->LitleSale->lastRequest['response_array'][$key], $val);
@@ -257,7 +266,7 @@ class LitleSaleTestCase extends AppTestCase {
 		$this->AssertTrue(!empty($this->LitleSale->lastRequest['response_array']['postDate']));
 	}
 	/*  */
-	function test3() {
+	public function test3() {
 		$sale = array(
 			'reportGroup' => 'test',
 			'orderId' => '3',
@@ -272,14 +281,14 @@ class LitleSaleTestCase extends AppTestCase {
 			'card_number' => '6011010000000003',
 			'card_expdate' => '0312',
 			'card_cvv' => '758',
-			);
+		);
 		$expected = array(
 			'response' => '000',
 			'message' => 'Approved',
 			'authCode' => '33333',
 			'FraudResult.avsResult' => '10',
 			'FraudResult.cardValidationResult' => 'M',
-			);
+		);
 		$response = $this->LitleSale->save($sale);
 		$this->AssertTrue($this->LitleSale->id > 111111111111111111);
 		$this->AssertTrue($this->LitleSale->lastRequest['transaction_id']==$this->LitleSale->id);
@@ -294,7 +303,7 @@ class LitleSaleTestCase extends AppTestCase {
 		$expected = array(
 			'response' => '000',
 			'message' => 'Approved',
-			);
+		);
 		$this->AssertTrue(empty($this->LitleSale->lastRequest['errors']));
 		foreach ( $expected as $key => $val ) {
 			$this->AssertEqual($this->LitleSale->lastRequest['response_array'][$key], $val);
@@ -303,7 +312,7 @@ class LitleSaleTestCase extends AppTestCase {
 		$this->AssertTrue(!empty($this->LitleSale->lastRequest['response_array']['postDate']));
 	}
 	/*  */
-	function test6() {
+	public function test6() {
 		$sale = array(
 			'reportGroup' => 'test',
 			'orderId' => '6',
@@ -318,13 +327,13 @@ class LitleSaleTestCase extends AppTestCase {
 			'card_number' => '4457010100000008',
 			'card_expdate' => '0612',
 			'card_cvv' => '992',
-			);
+		);
 		$expected = array(
 			'response' => '110',
 			'message' => 'Insufficient Funds',
 			'FraudResult.avsResult' => '34',
 			'FraudResult.cardValidationResult' => 'P',
-			);
+		);
 		$response = $this->LitleSale->save($sale);
 		$this->AssertTrue($this->LitleSale->id > 111111111111111111);
 		$this->AssertTrue($this->LitleSale->lastRequest['transaction_id']==$this->LitleSale->id);
@@ -349,7 +358,7 @@ class LitleSaleTestCase extends AppTestCase {
 		#print_r(array_intersect_key($this->LitleSale->lastRequest, array('request_raw' => 1,'response_raw' => 1)));
 	}
 	/*  */
-	function testVIcredit12401() {
+	public function testVIcredit12401() {
 		$sale = array(
 			'reportGroup' => 'test',
 			'orderId' => 'VIcredit12401',
@@ -364,11 +373,11 @@ class LitleSaleTestCase extends AppTestCase {
 			'card_type' => 'VI',
 			'card_number' => '4457012400000001',
 			'card_expdate' => '1220',
-			);
+		);
 		$expected = array(
 			'response' => '110',
 			'message' => 'Insufficient Funds',
-			);
+		);
 		$response = $this->LitleSale->save($sale);
 		$this->AssertTrue($this->LitleSale->id > 111111111111111111);
 		$this->AssertTrue($this->LitleSale->lastRequest['transaction_id']==$this->LitleSale->id);
@@ -392,7 +401,7 @@ class LitleSaleTestCase extends AppTestCase {
 		}
 	}
 	/* */
-	function testVIprepaid13201() {
+	public function testVIprepaid13201() {
 		$sale = array(
 			'reportGroup' => 'test',
 			'orderId' => 'VIprepaid13201',
@@ -407,11 +416,11 @@ class LitleSaleTestCase extends AppTestCase {
 			'card_type' => 'VI',
 			'card_number' => '4457013200000001',
 			'card_expdate' => '1220',
-			);
+		);
 		$expected = array(
 			'response' => '349',
 			'message' => 'Do Not Honor',
-			);
+		);
 		$response = $this->LitleSale->save($sale);
 		$this->AssertTrue($this->LitleSale->id > 111111111111111111);
 		$this->AssertTrue($this->LitleSale->lastRequest['transaction_id']==$this->LitleSale->id);
@@ -436,10 +445,10 @@ class LitleSaleTestCase extends AppTestCase {
 	}
 	/*  */
 	/**
-	*
-	*
-	*/
-	function __deep_ksort(&$arr) {
+	 *
+	 *
+	 */
+	public function __deep_ksort(&$arr) {
 		ksort($arr);
 		foreach ($arr as &$a) {
 			if (is_array($a) && !empty($a)) {
@@ -448,10 +457,10 @@ class LitleSaleTestCase extends AppTestCase {
 		}
 	}
 	/**
-	*
-	*
-	*/
-	function __deep_shuffle(&$arr) {
+	 *
+	 *
+	 */
+	public function __deep_shuffle(&$arr) {
 		$keys = array_keys( $arr );
 		shuffle( $keys );
 		$arr = array_merge( array_flip( $keys ) , $arr );
@@ -462,4 +471,3 @@ class LitleSaleTestCase extends AppTestCase {
 		}
 	}
 }
-?>

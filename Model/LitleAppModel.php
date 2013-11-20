@@ -13,6 +13,8 @@
 * @license MIT License - http://www.opensource.org/licenses/mit-license.php
 *
 */
+App::uses('LitleUtil', 'Litle.Lib');
+App::uses('AppModel', 'Model');
 class LitleAppModel extends AppModel {
 	/**
 	* This model doesn't use a table
@@ -261,38 +263,41 @@ class LitleAppModel extends AppModel {
 	*/
 	public function __construct($config=array()) {
 		parent::__construct($config);
-		if (!class_exists('LitleUtil')) {
-			App::import('Lib', 'Litle.LitleUtil');
-		}
 	}
+
 	/**
-	* Overwrite of the save method
-	* All work is really done by
-	* beforeSave() preps the data
-	* parent::save() --> LitleSource does the API request
-	* afterSave() parses the data
-	* logRequest() (optional) logs to
-	*/
-	function save($data) {
+	 * Overwrite of the save method
+	 * All work is really done by
+	 * beforeSave() preps the data
+	 * parent::save() --> LitleSource does the API request
+	 * afterSave() parses the data
+	 * logRequest() (optional) logs to
+	 */
+	public function save($data = null, $validate = true, $fieldList = array()) {
+		// do the basic save (Model -> Datasource)
 		$return = parent::save($data);
-		$this->logRequest();
+		// log the result
+		$logged = $this->logRequest();
+		// return the $return value
 		return $return;
 	}
+
 	/**
 	* beforeSave clears out $this->lastRequest
 	*/
-	function beforeSave($options=array()) {
+	public function beforeSave($options=array()) {
 		$this->lastRequest = $this->errors = array();
 		return parent::beforeSave($options);
 	}
 	/**
 	* afterSave parses results and verifies status for all transactions
 	* assumes $this->lastRequest exists and has the details for the LitleSource->__request()
+	*
 	* @param mixed $created
-	* @return bool
+	* @param array $options
+	* @return boolean
 	*/
-	function afterSave($created=null) {
-		parent::afterSave($created);
+	public function afterSave($created=null, $options=array()) {
 		if (empty($this->lastRequest)) {
 			$this->lastRequest = array('status' => 'error', 'errors' => array("Unable to access {$this->Alias}->lastRequest"));
 			return false;
@@ -311,33 +316,45 @@ class LitleAppModel extends AppModel {
 			$status = "error";
 		}
 		$this->lastRequest = compact($this->requestVars);
-		return true;
+		return parent::afterSave($created, $options);
 	}
 	/**
-	* Logs the last request, if config includes a model to log with
-	* This method is called within the afterSave() at the end
-	* Can have method "logLitleRequest" as in: ModelName->logLitleRequest($lastRequest);
-	* Can have method "logRequest" as in: ModelName->logRequest($lastRequest);
-	* Can have method "save" as in: ModelName->save($lastRequest);
-	* @return mixed $saved or false
-	*/
-	function logRequest() {
+	 * Logs the last request, if config includes a model to log with
+	 * This method is called within the afterSave() at the end
+	 * Can have method "logLitleRequest" as in: ModelName->logLitleRequest($lastRequest);
+	 * Can have method "logRequest" as in: ModelName->logRequest($lastRequest);
+	 * Can have method "save" as in: ModelName->save($lastRequest);
+	 *
+	 * @return boolean
+	 */
+	public function logRequest() {
 		if (empty($this->lastRequest)) {
-			return false;
+			return null;
 		}
 		$logModel = LitleUtil::getConfig('logModel');
-		if (!empty($logModel) && is_string($logModel)) {
-			App::import('Model', $logModel);
-			$LogModel =  ClassRegistry::init($logModel);
-			if (method_exists($LogModel, 'logLitleRequest')) {
-				return $LogModel->logLitleRequest($this->lastRequest);
-			} elseif (method_exists($LogModel, 'logRequest')) {
-				return $LogModel->logRequest($this->lastRequest);
-			} elseif (method_exists($LogModel, 'save')) {
-				return $LogModel->save($this->lastRequest);
-			}
+		if (empty($logModel) || !is_string($logModel)) {
+			return null;
 		}
-		return false;
+		App::uses($logModel, 'Model');
+		$LogModel =  ClassRegistry::init($logModel);
+		if (empty($LogModel) || !is_object($LogModel)) {
+			throw new LitleException('LitleAppModel::logRequest() unable to initialize ' . $logModel);
+		}
+		$method = 'save';
+		if (method_exists($LogModel, 'logLitleRequest')) {
+			$method = 'logLitleRequest';
+		} elseif (method_exists($LogModel, 'logRequest')) {
+			$method = 'logRequest';
+		}
+		$LogModel->create(false);
+		if (!$LogModel->$method($this->lastRequest)) {
+			throw new LitleException(sprintf('LitleAppModel::logRequest() unable to log transaction via %s::%s() %s',
+				$LogModel->alias,
+				$method,
+				json_encode($LogModel->validationErrors)
+			));
+		}
+		return true;
 	}
 	/**
 	* Re-arrange fields which coule be passed in a single-dim array
@@ -348,7 +365,7 @@ class LitleAppModel extends AppModel {
 	* @param string $style
 	* @return array $data
 	*/
-	function translateFields($data, $style=null) {
+	public function translateFields($data, $style=null) {
 		if (isset($data[$this->alias])) {
 			$data = array_merge($data, $data[$this->alias]);
 			unset($data[$this->alias]);
@@ -372,7 +389,7 @@ class LitleAppModel extends AppModel {
 		$nested = array();
 		foreach ( $data as $key => $val ) {
 			if (strpos($key, '.')!==false) {
-				$nested = set::insert($nested, $key, $val);
+				$nested = Set::insert($nested, $key, $val);
 				unset($data[$key]);
 			}
 		}
@@ -385,14 +402,14 @@ class LitleAppModel extends AppModel {
 	* @param string $style
 	* @return array $data
 	*/
-	function assignDefaults($data, $style=null) {
+	public function assignDefaults($data, $style=null) {
 		if (isset($data[$this->alias])) {
 			$data = array_merge($data, $data[$this->alias]);
 			unset($data[$this->alias]);
 		}
 		$defaults = LitleUtil::getConfig('defaults');
 		if (isset($defaults[$style]) && is_array($defaults[$style]) && !empty($defaults[$style])) {
-			$data = set::merge($defaults[$style], $data);
+			$data = Set::merge($defaults[$style], $data);
 		}
 		if (isset($this->_schema)) {
 			foreach ( array_keys($this->_schema) as $key ) {
@@ -422,13 +439,13 @@ class LitleAppModel extends AppModel {
 	/**
 	* Litle requires the XML data to be in a specific order :(
 	* As such, we need to make sure every node in our array is correctly ordered
-	* NOTE: this ends in a set::filter() which will remove all empty values (except for 0)
+	* NOTE: this ends in a Set::filter() which will remove all empty values (except for 0)
 	* @param array $data
 	* @param string $templateKey
 	* @param array $rootAttributes optional
 	* @return array $data
 	*/
-	function finalizeFields($data, $templateKey=null, $rootAttributes=array()) {
+	public function finalizeFields($data, $templateKey=null, $rootAttributes=array()) {
 		// include only allowed fields (must be defined in the schema)
 		$stripped_data_keys = array_diff(array_keys($data), array_keys($this->_schema));
 		$data = array_intersect_key($data, $this->_schema);
@@ -450,15 +467,15 @@ class LitleAppModel extends AppModel {
 	/**
 	* Litle requires the XML data to be in a specific order :(
 	* As such, we need to make sure every node in our array is correctly ordered
-	* NOTE: this ends in a set::filter() which will remove all empty values (except for 0)
+	* NOTE: this ends in a Set::filter() which will remove all empty values (except for 0)
 	* @param array $data
 	* @param string $templateKey
 	* @return array $data
 	*/
-	function orderFields($data, $templateKey=null) {
+	public function orderFields($data, $templateKey=null) {
 		// act on this node
 		if (array_key_exists($templateKey, $this->templates) && is_array($data)) {
-			$data = set::merge($this->templates[$templateKey], $data);
+			$data = Set::merge($this->templates[$templateKey], $data);
 		}
 		// recursivly act on all child nodes
 		foreach ( $data as $key => $val ) {
@@ -467,7 +484,7 @@ class LitleAppModel extends AppModel {
 			}
 		}
 		// clear all null elements (recursivly, so do this after recusion)
-		$data = set::filter($data);
+		$data = Set::filter($data);
 		if (!is_array($data)) {
 			$data = array();
 		}
@@ -484,7 +501,7 @@ class LitleAppModel extends AppModel {
 	* @param mixed $data
 	* @return mixed $data
 	*/
-	function cleanValues($data) {
+	public function cleanValues($data) {
 		if (is_array($data)) {
 			foreach ( $data as $key => $val ) {
 				if (is_array($val)) {
@@ -531,23 +548,28 @@ class LitleAppModel extends AppModel {
 	/**
 	* Overwrite of the exists() function
 	* means everything is a create() / new
+	*
+	* @param mixed $id (ignored)
+	* @return boolean [false]
 	*/
-	function exists() {
+	public function exists($id = null) {
 		return false;
 	}
 	/**
-	* Overwrite of the query() function
-	* error handling
+	* Overwrite of the query() function - used as error handling
+	*
+	* @param string $sql
+	* @return boolean
 	*/
-	function query() {
-		die("Sorry, bad method call on {$this->alias}");
+	public function query($sql = null) {
+		throw new OutOfBoundsException("{$this->alias}::{$sql} - Sorry, bad method call");
 	}
 	/**
 	* Helper shortcut for commonly used number_format() call
 	* @param mixed $number
 	* @return string $formatted_number
 	*/
-	function num($number) {
+	public function num($number) {
 		if (is_string($number) && is_numeric($number)) {
 			if (strpos('.', $number)!==false) {
 				return number_format(floatval($number), 0, '.', '');

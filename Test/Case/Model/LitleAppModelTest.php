@@ -1,54 +1,21 @@
 <?php
-App::import('Datasource', 'litle.LitleSource');
-App::import('Model', 'litle.LitleAppModel');
-App::import('Lib', 'Templates.AppTestCase');
+/**
+* Unit Tests for Model/LitleAppModel
+*
+* @link https://github.com/zeroasterisk/CakePHP-ArrayToXml-Lib
+* @author Alan Blount <alan@zeroasterisk.com>
+* @copyright (c) 2011 Alan Blount
+* @license MIT License - http://www.opensource.org/licenses/mit-license.php
+*/
+App::uses('LitleSource','Litle.Model/Datasource');
+App::uses('LitleAppModel', 'Litle.Model');
+App::uses('LitleUtil', 'Litle.Lib');
+App::uses('Set', 'Utility');
 
-# these details should be set in your config, but can be overridden here
-# configure::write('Litle.user', '******');
-# configure::write('Litle.password', '******');
-# configure::write('Litle.merchantId', '******');
-# probably always a good idea to override the URL to hit the cert URL
-configure::write('Litle.url', 'https://cert.litle.com/vap/communicator/online');
-
-configure::write('Litle.logModel', null);
-configure::write('Litle.auto_orderId_if_missing', true);
-configure::write('Litle.auto_id_if_missing', true);
-configure::write('Litle.duplicate_window_in_seconds', true);
-// translate your local fields to special fields
-configure::write('Litle.field_map', array(
-	'billToAddress.name'			=> array('bill_name'),
-	'billToAddress.addressLine1'	=> array('bill_address'),
-	'billToAddress.addressLine2'	=> array('bill_address_2'),
-	'billToAddress.addressLine3'	=> array('bill_address_3'),
-	'billToAddress.city'			=> array('bill_city'),
-	'billToAddress.state'			=> array('bill_state'),
-	'billToAddress.zip'				=> array('bill_zip'),
-	'billToAddress.county'			=> array('bill_county'),
-	'card.number'					=> array('card_number', 'cc_account', 'cc_number', 'account'),
-	'card.expDate'					=> array('card_expdate', 'card_expire', 'cc_expires', 'cc_expire', 'expires'),
-	'card.cardValidationNum'		=> array('card_cardvalidationnum', 'card_cvv', 'cc_cvv', 'cvv', 'cvvn'),
-	));
-// You can assign default values for ANY API interaction (after the translation)
-configure::write('Litle.defaults', array(
-	'sale' => array(
-		'reportGroup' => '1',
-		'orderSource' => 'ecommerce',
-		'billToAddress' => array(
-			'country' => 'US',
-			),
-		'customBilling' => array(
-			'phone' => '8888888888',
-			'descriptor' => 'abc*ABC Company, LLC',
-			),
-		),
-	'void' => array(),
-	'refund' => array(),
-	'token' => array(),
-	// etc..
-	));
-class LitleAppModelTestCase extends AppTestCase {
+class LitleAppModelTest extends CakeTestCase {
 	public $plugin = 'app';
 	public $fixtures = array();
+	protected $_testsToRun = array();
 	public $test1 = array(
 			'id' => '98765',
 			'reportGroup' => '1',
@@ -78,7 +45,6 @@ class LitleAppModelTestCase extends AppTestCase {
 				'reportGroup' => 'test',
 				),
 			);
-	protected $_testsToRun = array();
 	/**
 	* Start Test callback
 	*
@@ -87,7 +53,51 @@ class LitleAppModelTestCase extends AppTestCase {
 	* @access public
 	*/
 	public function startTest($method) {
+		parent::startTest($method);
 		$this->LitleAppModel = new LitleAppModel(false, null, 'litle');
+		# ------ config -------
+		# these details should be set in your config, but can be overridden here
+		# Configure::write('Litle.user', '******');
+		# Configure::write('Litle.password', '******');
+		# Configure::write('Litle.merchantId', '******');
+		# probably always a good idea to override the URL to hit the cert URL
+		Configure::write('Litle.url', 'https://cert.litle.com/vap/communicator/online');
+		Configure::write('Litle.logModel', null);
+		Configure::write('Litle.auto_orderId_if_missing', true);
+		Configure::write('Litle.auto_id_if_missing', true);
+		Configure::write('Litle.duplicate_window_in_seconds', true);
+		// translate your local fields to special fields
+		Configure::write('Litle.field_map', array(
+			'billToAddress.name'			=> array('bill_name'),
+			'billToAddress.addressLine1'	=> array('bill_address'),
+			'billToAddress.addressLine2'	=> array('bill_address_2'),
+			'billToAddress.addressLine3'	=> array('bill_address_3'),
+			'billToAddress.city'			=> array('bill_city'),
+			'billToAddress.state'			=> array('bill_state'),
+			'billToAddress.zip'				=> array('bill_zip'),
+			'billToAddress.county'			=> array('bill_county'),
+			'card.number'					=> array('card_number', 'cc_account', 'cc_number', 'account'),
+			'card.expDate'					=> array('card_expdate', 'card_expire', 'cc_expires', 'cc_expire', 'expires'),
+			'card.cardValidationNum'		=> array('card_cardvalidationnum', 'card_cvv', 'cc_cvv', 'cvv', 'cvvn'),
+		));
+		// You can assign default values for ANY API interaction (after the translation)
+		Configure::write('Litle.defaults', array(
+			'sale' => array(
+				'reportGroup' => '1',
+				'orderSource' => 'ecommerce',
+				'billToAddress' => array(
+					'country' => 'US',
+				),
+				'customBilling' => array(
+					'phone' => '8888888888',
+					'descriptor' => 'abc*ABC Company, LLC',
+				),
+			),
+			'void' => array(),
+			'refund' => array(),
+			'token' => array(),
+			// etc..
+		));
 	}
 	/**
 	* End Test callback
@@ -97,14 +107,14 @@ class LitleAppModelTestCase extends AppTestCase {
 	* @access public
 	*/
 	public function endTest($method) {
-		parent::endTest($method);
+		parent::endtest($method);
 		unset($this->LitleAppModel);
 		ClassRegistry::flush();
 	}
 	/**
 	* Validate the plugin setup
 	*/
-	function testSetup() {
+	public function testSetup() {
 		$this->assertTrue(is_object($this->LitleAppModel));
 		$this->assertTrue(isset($this->LitleAppModel->useTable));
 		$this->assertFalse($this->LitleAppModel->useTable);
@@ -113,21 +123,21 @@ class LitleAppModelTestCase extends AppTestCase {
 	* Validate the config setup
 	* more on tests/cases/libs/litle_util.test.php
 	*/
-	function testConfig() {
-		$this->assertEqual(LitleUtil::getConfig('logModel'), configure::read('Litle.logModel'));
-		$this->assertEqual(LitleUtil::getConfig('field_map'), configure::read('Litle.field_map'));
-		$this->assertEqual(LitleUtil::getConfig('defaults'), configure::read('Litle.defaults'));
-		$this->assertEqual(LitleUtil::getConfig('url'), configure::read('Litle.url'));
+	public function testConfig() {
+		$this->assertEqual(LitleUtil::getConfig('logModel'), Configure::read('Litle.logModel'));
+		$this->assertEqual(LitleUtil::getConfig('field_map'), Configure::read('Litle.field_map'));
+		$this->assertEqual(LitleUtil::getConfig('defaults'), Configure::read('Litle.defaults'));
+		$this->assertEqual(LitleUtil::getConfig('url'), Configure::read('Litle.url'));
 		// not change config on the fly
-		$url = configure::read('Litle.url');
+		$url = Configure::read('Litle.url');
 		LitleUtil::setConfig('url', 'http://google.com');
 		$this->assertEqual(LitleUtil::getConfig('url'), 'http://google.com');
-		$this->assertEqual(configure::read('Litle.url'), 'http://google.com');
+		$this->assertEqual(Configure::read('Litle.url'), 'http://google.com');
 		LitleUtil::setConfig('url', $url);
 		$this->assertEqual(LitleUtil::getConfig('url'), $url);
-		$this->assertEqual(configure::read('Litle.url'), $url);
+		$this->assertEqual(Configure::read('Litle.url'), $url);
 		// now testing deeper nestings
-		$orderSource = configure::read('Litle.defaults.sale.orderSource');
+		$orderSource = Configure::read('Litle.defaults.sale.orderSource');
 		$this->assertEqual(LitleUtil::getConfig('defaults.sale.orderSource'), $orderSource);
 		LitleUtil::setConfig('defaults.sale.orderSource', 'bad source');
 		$this->assertEqual(LitleUtil::getConfig('defaults.sale.orderSource'), 'bad source');
@@ -137,7 +147,7 @@ class LitleAppModelTestCase extends AppTestCase {
 	/**
 	* Validate orderFields functionality
 	*/
-	function testOrderFields() {
+	public function testOrderFields() {
 		$response = $expected = $data = $this->test1;
 		$this->AssertEqual(json_encode($response), json_encode($expected));
 		$this->__deep_ksort($response);
@@ -162,7 +172,7 @@ class LitleAppModelTestCase extends AppTestCase {
 	/**
 	* Validate the cleanValues
 	*/
-	function testCleanValues() {
+	public function testCleanValues() {
 		// control | pass in the anticipated results and ensure they are unchanged
 		$response = $expected = $data = $this->test1;
 		$this->__deep_ksort($data);
@@ -211,12 +221,12 @@ class LitleAppModelTestCase extends AppTestCase {
 		$data['processingInstructions']['bypassVelocityCheck'] = 0;
 		$response = $this->LitleAppModel->cleanValues($data);
 		$this->AssertEqual($response['processingInstructions']['bypassVelocityCheck'], 'false');
-		
+
 	}
 	/**
 	* Validate the translateFields
 	*/
-	function testTranslateFields() {
+	public function testTranslateFields() {
 		// control | pass in the anticipated results and ensure they are unchanged
 		$response = $expected = $data = $this->test1;
 		$this->__deep_ksort($data);
@@ -262,7 +272,7 @@ class LitleAppModelTestCase extends AppTestCase {
 	/**
 	* Validate the assignDefaults
 	*/
-	function testAssignDefaults() {
+	public function testAssignDefaults() {
 		// control | pass in the anticipated results and ensure they are unchanged
 		$expected = $data = $this->test1;
 		$this->__deep_ksort($data);
@@ -280,7 +290,7 @@ class LitleAppModelTestCase extends AppTestCase {
 			));
 		unset($data['orderSource']);
 		unset($data['billToAddress']['country']);
-		unset($data['customBilling']); 
+		unset($data['customBilling']);
 		$response = $this->LitleAppModel->assignDefaults($data, 'sale');
 		$this->__deep_ksort($response);
 		$this->AssertEqual($response, $expected);
@@ -299,7 +309,7 @@ class LitleAppModelTestCase extends AppTestCase {
 	*
 	*
 	*/
-	function __deep_ksort(&$arr) {
+	public function __deep_ksort(&$arr) {
 		ksort($arr);
 		foreach ($arr as &$a) {
 			if (is_array($a) && !empty($a)) {
@@ -307,5 +317,22 @@ class LitleAppModelTestCase extends AppTestCase {
 			}
 		}
 	}
+	/**
+	 *
+	 */
+	public function testQuery() {
+		try {
+			$this->LitleAppModel->query('badMethod');
+			$this->fail('Expected Exception here');
+		} catch (Exception $e) {
+			$this->AssertEqual('LitleAppModel::badMethod - Sorry, bad method call', $e->getMessage());
+		}
+		try {
+			$this->LitleAppModel->badMethod();
+			$this->fail('Expected Exception here');
+		} catch (Exception $e) {
+			$this->AssertEqual('LitleSource::badMethod - Sorry, bad method call', $e->getMessage());
+		}
+	}
 }
-?>
+

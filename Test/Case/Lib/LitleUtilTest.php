@@ -1,7 +1,8 @@
 <?php
-App::import('Lib', 'Templates.AppTestCase');
-App::import('Lib', 'Litle.LitleUtil');
-class LitleUtilTestCase extends AppTestCase {
+App::uses('LitleUtil', 'Litle.Lib');
+App::uses('ArrayToXml', 'Litle.Lib');
+App::uses('Set', 'Utility');
+class LitleUtilTest extends CakeTestCase {
 
 	public $plugin = 'app';
 	public $fixtures = array();
@@ -33,13 +34,13 @@ class LitleUtilTestCase extends AppTestCase {
 	}
 
 	/*  */
-	function testGetConfig() {
+	public function testGetConfig() {
 		// test basic config
 		$this->AssertEqual(LitleUtil::getConfig("plugin_version"), LitleUtil::$_baseConfig['plugin_version']);
 		$this->AssertEqual(LitleUtil::getConfig("version"), LitleUtil::$_baseConfig['version']);
 		$this->AssertEqual(LitleUtil::getConfig("url_xmlns"), LitleUtil::$_baseConfig['url_xmlns']);
 		// test basic configuration settings
-		$this->AssertFalse(LitleUtil::getConfig("somthingCrazy"));
+		$this->AssertNull(LitleUtil::getConfig("somthingCrazy"));
 		$somethingCrazy1 = date('ymdhis').rand(0,2000);
 		$somethingCrazy2 = date('sihdmy').rand(0,2000);
 		Configure::write('Litle.somthingCrazy', $somethingCrazy1);
@@ -50,7 +51,7 @@ class LitleUtilTestCase extends AppTestCase {
 		$this->AssertEqual(LitleUtil::$config['somthingCrazy'], $somethingCrazy2);
 		// doesn't update configuration when setting directly
 		$this->AssertEqual(Configure::read('Litle.somthingCrazy'), $somethingCrazy1);
-		// can set extra "deep" keys on 
+		// can set extra "deep" keys on
 		Configure::write('Litle.nested', array('one' => 1, 'two' => array('sub' => 1, 'subtwo' => array('one' => 3, 'sub' => 3))));
 		$this->AssertEqual(LitleUtil::getConfig("nested.one"), 1);
 		$this->AssertEqual(LitleUtil::getConfig("nested.two.sub"), 1);
@@ -58,9 +59,9 @@ class LitleUtilTestCase extends AppTestCase {
 		$this->AssertEqual(LitleUtil::getConfig("nested.two.subtwo.one"), 3);
 	}
 	/*  */
-	function testSetConfig() {
+	public function testSetConfig() {
 		// test basic configuration settings
-		$this->AssertFalse(LitleUtil::getConfig("somthingCrazy"));
+		$this->AssertNull(LitleUtil::getConfig("somthingCrazy"));
 		$somethingCrazy1 = date('ymdhis').rand(0,2000);
 		$somethingCrazy2 = date('sihdmy').rand(0,2000);
 		Configure::write('Litle.somthingCrazy', $somethingCrazy1);

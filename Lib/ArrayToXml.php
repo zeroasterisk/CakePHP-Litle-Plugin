@@ -3,9 +3,9 @@
 * ArrayToXml allows two methods for converting an associative array to XML
 *
 * ArrayToXml::build($array)
-* uses CakePHP's XmlHelper to construct, 
+* uses CakePHP's XmlHelper to construct,
 * this lets you construct XML segments easier, which you can put together later
-* NOTE: this XML will not have a root element, unless the array does 
+* NOTE: this XML will not have a root element, unless the array does
 *
 * or if you prefer SimpleXml (which is faster)
 * ArrayToXml::simplexml($array, $rootNodeName, $rootNodeAttributes)
@@ -16,15 +16,16 @@
 * @copyright (c) 2011 Alan Blount
 * @license MIT License - http://www.opensource.org/licenses/mit-license.php
 */
+App::uses('Xml', 'Utility');
 class ArrayToXml {
 	static $attribKey = 'attrib';
 	static $cleanValues = true;
 	static $XmlHelper = null;
-	
+
 	/**
 	* Build a full XML document from associative array
 	* this uses CakePHP's Xml
-	* very similar to simple() {uses SimpleXml) 
+	* very similar to simple() {uses SimpleXml)
 	* @param array of data to create xml document out of
 	* @example:
 		$data = array(
@@ -53,13 +54,7 @@ class ArrayToXml {
 	* @param boolean include headers (default false)
 	*/
 	static function build($array = array(), $headers = false){
-		if (!is_object(ArrayToXml::$XmlHelper)) {
-			App::import('Core', 'Xml');
-			App::import('Core', 'Helper');
-			App::import('Helper', 'Xml');
-			ArrayToXml::$XmlHelper = new XmlHelper();
-		}
-		$retval = $headers ? ArrayToXml::$XmlHelper->header() : "";
+		$retval = $headers ? ArrayToXml::xmlHeader(): "";
 		foreach($array as $tag => $value){
 			$options = null;
 			extract(ArrayToXml::parseKey($tag));
@@ -68,9 +63,9 @@ class ArrayToXml {
 					$options = (is_array($options) ? array_merge($value[ArrayToXml::$attribKey]) : $value[ArrayToXml::$attribKey]);
 					unset($value[ArrayToXml::$attribKey]);
 				}
-				$retval .= ArrayToXml::$XmlHelper->elem($tag, $options, ArrayToXml::build($value, false));
+				$retval .= ArrayToXml::elem($tag, $options, ArrayToXml::build($value, false));
 			} else {
-				$retval .= ArrayToXml::$XmlHelper->elem($tag, $options, ArrayToXml::xml_value($value));
+				$retval .= ArrayToXml::elem($tag, $options, ArrayToXml::xml_value($value));
 			}
 		}
 		return $retval;
@@ -78,7 +73,7 @@ class ArrayToXml {
 	/**
 	* Build a full XML document from associative array
 	* this uses SimpleXml
-	* very similar to build() {uses CakePHP's Xml) 
+	* very similar to build() {uses CakePHP's Xml)
 	* @param array $array array of elements to create (required)
 	* @param string $rootNode root element name (required)
 	* @param array $rootNodeAttrib array of attributes for the root element (optional)
@@ -139,7 +134,7 @@ class ArrayToXml {
 		if (!is_array($attributes) || empty($attributes)) {
 			return true;
 		}
-		foreach ( $attributes as $attrib_name => $attrib_value ) { 
+		foreach ( $attributes as $attrib_name => $attrib_value ) {
 			$Xml->addAttribute("$attrib_name", ArrayToXml::xml_value($attrib_value));
 		}
 		return true;
@@ -153,7 +148,11 @@ class ArrayToXml {
 		if (!ArrayToXml::$cleanValues) {
 			return $value;
 		}
-		if ($value===true) {
+		if (is_array($value)) {
+			// kindof a graceful error here...
+			//   could instead return JSON or CSV (?)
+			return 'Array';
+		} elseif ($value===true) {
 			return "TRUE";
 		} elseif ($value===false) {
 			return "FALSE";
@@ -170,7 +169,7 @@ class ArrayToXml {
 		return strval($value);
 	}
 	/**
-	* Parses attributes and possible non-duplicate/numeric keys 
+	* Parses attributes and possible non-duplicate/numeric keys
 	* @param string $tag
 	* @return array compact('tag', 'options')
 	*/
@@ -207,5 +206,25 @@ class ArrayToXml {
 		}
 		return $out;
 	}
+	/**
+	* Replacement for XmlHelper::elem() which is deprecated in 2.x
+	* @param tag
+	* @param array of attributes
+	* @param string content
+	*/
+	static private function elem($name, $attributes = array(), $content = null){
+		$attributes['@'] = $content;
+		$data = array(
+			$name => $attributes
+		);
+		$retval = Xml::fromArray($data, array('format' => 'attribute', 'encoding' => null))->asXML();
+		$retval = str_replace(array("<?xml version=\"1.0\"?>","\n"), "", $retval);
+		return html_entity_decode($retval);
+	}
+	/**
+	* Replacement for XmlHelper::header() which is deprecated in 2.x
+	*/
+	static private function xmlHeader(){
+		return '<?xml version="1.0" encoding="UTF-8" ?>';
+	}
 }
-?>

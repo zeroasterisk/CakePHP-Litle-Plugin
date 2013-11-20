@@ -13,6 +13,18 @@
 * @license MIT License - http://www.opensource.org/licenses/mit-license.php
 *
 */
+App::uses('DataSource','Model/Datasource');
+App::uses('LitleUtil','Litle.Lib');
+App::uses('HttpSocket', 'Network/Http');
+App::uses('ArrayToXml', 'Litle.Lib');
+App::uses('Xml', 'Utility');
+
+/**
+ * LitleException Class
+ */
+class LitleException extends Exception {
+}
+
 class LitleSource extends DataSource {
 	/**
 	* The description of this data source
@@ -56,19 +68,10 @@ class LitleSource extends DataSource {
 			}
 			configure::write('Litle', $config);
 		}
-		if (!class_exists('LitleUtil')) {
-			App::import('Lib', 'Litle.LitleUtil');
-		}
-		if (!class_exists('ArrayToXml')) {
-			App::import('Lib', 'Litle.ArrayToXml');
-		}
-		if (!class_exists('HttpSocket')) {
-			App::import('Core', 'HttpSocket');
-		}
 		$this->Http = new HttpSocket();
 	}
 	/**
-	* Override of the basic describe() function 
+	* Override of the basic describe() function
 	* @param object $model
 	* @return array $_schema
 	*/
@@ -83,26 +86,26 @@ class LitleSource extends DataSource {
 	/**
 	* Unsupported methods other CakePHP model and related classes require.
 	*/
-	public function listSources() {
+	public function listSources($data = null) {
 		return array('litle_transactions');
 	}
 	/**
 	* Not currently possible to read data. Method not implemented.
 	*/
-	public function read(&$Model, $queryData = array()) {
+	public function read(Model $Model, $queryData = array(), $recursive = null) {
 		return false;
 	}
 	/**
 	* Create a new transaction
 	*/
-	public function create(&$Model, $fields = array(), $values = array()) {
+	public function create(Model $Model, $fields = null, $values = null) {
 		$data = array_combine($fields, $values);
 		return $this->__request($data, $Model);
 	}
 	/**
 	* Capture a previously authorized transaction
 	*/
-	public function update(&$Model, $fields = null, $values = null) {
+	public function update(Model $Model, $fields = null, $values = null, $conditions = null) {
 		$data = array_combine($fields, $values);
 		return $this->__request($data, $Model);
 	}
@@ -110,8 +113,17 @@ class LitleSource extends DataSource {
 	* Not currently possible to read data. Method not implemented.
 	* LitleSale->delete() works fine, through LitleVoid->save()
 	*/
-	public function delete(&$Model, $id = null) {
+	public function delete(Model $Model, $id = null) {
 		return false;
+	}
+	/**
+	* Overwrite of the query() function - used as error handling
+	*
+	* @param string $sql
+	* @return boolean
+	*/
+	public function query($sql = null) {
+		throw new OutOfBoundsException("LitleSource::{$sql} - Sorry, bad method call");
 	}
 	/**
 	* Translate keys to a value Litle.net expects in posted data, as well as encapsulating where relevant. Returns false
@@ -119,7 +131,7 @@ class LitleSource extends DataSource {
 	* @param mixed $data
 	* @return string $xml
 	*/
-	public function prepareApiData($data = null, &$Model=null) {
+	public function prepareApiData($data = null, Model $Model=null) {
 		if (empty($data)) {
 			return false;
 		}
@@ -167,12 +179,13 @@ class LitleSource extends DataSource {
 		#$xml = preg_replace('#(<[^/>]*>)(<[^/>]*>)#', "\$1\n\$2", $xml);
 		#$xml = preg_replace('#(</[a-zA-Z0-9]*>)(</[a-zA-Z0-9]*>)#', "\$1\n\$2", $xml);
 		$function = __function__;
-		$this->log[] =compact('func', 'data', 'requestArray', 'xml');
+		$this->log[] = compact('func', 'data', 'requestArray', 'xml');
 		/* */
 		return $xml;
 	}
 	/**
-	* Parse the response data from a post to authorize.net
+	* Parse the response data from a post
+	*
 	* @param string $response
 	* @param object $Model
 	* @return array
@@ -184,11 +197,11 @@ class LitleSource extends DataSource {
 		$response_array = array();
 		if (is_string($response)) {
 			$response_raw = $response;
-			if (!class_exists('Xml')) {
-				App::import("Core", "Xml");
+			try {
+				$response_array = Xml::toArray(Xml::build($response_raw));
+			} catch (XmlException $e) {
+				throw new LitleException($e->getMessage());
 			}
-			$Xml = new Xml($response);
-			$response_array = $Xml->toArray();
 		} elseif (is_array($response_array)) {
 			$response_array = $response;
 			if (array_key_exists('response_raw', $response_array)) {
@@ -196,7 +209,7 @@ class LitleSource extends DataSource {
 				unset($response_array['response_raw']);
 			}
 		} else {
-			$errors[] = 'Response is in invalid format';
+			throw new LitleException('Response is in invalid format');
 		}
 		// boil down to just the response we are interested in
 		if (array_key_exists('litleOnlineResponse', $response_array)) {
@@ -204,15 +217,18 @@ class LitleSource extends DataSource {
 		} elseif (array_key_exists('LitleOnlineResponse', $response_array)) {
 			$response_array = $response_array['LitleOnlineResponse'];
 		}
+		// re-format, remove the '@' prefixes
+		$response_array = $this->responseCleanAttr($response_array);
 		// verify response_array
 		if (!is_array($response_array)) {
-			$errors[] = 'Response is not formatted as an Array';
-		} elseif (!array_key_exists('response', $response_array)) {
-			$errors[] = 'Response.response missing (request xml validity)';
+			throw new LitleException('Response is not formatted as an Array');
+		}
+		if (!array_key_exists('response', $response_array)) {
+			throw new LitleException('Response.response missing (request xml validity)');
 		}
 		if (array_key_exists('message', $response_array) && $response_array['message']!='Valid Format') {
 			$errors[] = $response_array['message'];
-		} elseif (intval($response_array['response'])!==0) {
+		} elseif (!array_key_exists('response', $response_array) || intval($response_array['response'])!==0) {
 			$errors[] = 'Response.response indicates request xml is in-valid, unknown Message';
 		}
 		if (empty($errors)) {
@@ -222,16 +238,39 @@ class LitleSource extends DataSource {
 		}
 		return compact('status', 'transaction_id', 'errors', 'response_array', 'response_raw');
 	}
+
 	/**
-	*
-	* Post data to authorize.net. Returns false if there is an error,
-	* or an array of the parsed response from authorize.net if valid
-	*
-	* @param array $request
-	* @param object $Model optional
-	* @return mixed $response
-	*/
-	public function __request($data, &$Model=null) {
+	 * Response arrays may have fields/keys with a '@' prefix -- remove those
+	 *
+	 * @param array $array
+	 * @return array $array
+	 */
+	public function responseCleanAttr($array) {
+		if (!is_array($array)) {
+			return $array;
+		}
+		foreach (array_keys($array) as $key) {
+			if (is_array($array[$key])) {
+				$array[$key] = $this->responseCleanAttr($array[$key]);
+			}
+			if (substr(trim($key), 0, 1) == '@') {
+				$array[str_replace('@', '', trim($key))] = $array[$key];
+				unset($array[$key]);
+			}
+		}
+		return $array;
+	}
+
+	/**
+	 *
+	 * Post data to authorize.net. Returns false if there is an error,
+	 * or an array of the parsed response from authorize.net if valid
+	 *
+	 * @param array $request
+	 * @param object $Model optional
+	 * @return mixed $response
+	 */
+	public function __request($data, Model $Model=null) {
 		$errors = array();
 		if (empty($data)) {
 			$errors[] = "Missing input data";
@@ -247,12 +286,14 @@ class LitleSource extends DataSource {
 		if (empty($errors)) {
 			$this->Http->reset();
 			$url = LitleUtil::getConfig('url');
-			$response_raw = $this->Http->post($url, $request_raw, array(
+			$requestOptions = array(
 				'header' => array(
 					'Connection' => 'close',
 					'User-Agent' => 'CakePHP Litle Plugin v.'.LitleUtil::getConfig('version'),
-					)
-				));
+				)
+			);
+			$response = $this->Http->post($url, $request_raw, $requestOptions);
+			$response_raw = $response->body;
 			if ($this->Http->response['status']['code'] != 200) {
 				$errors[] = "LitleSource: Error: Could not connect to authorize.net... bad credentials?";
 			}
@@ -271,6 +312,7 @@ class LitleSource extends DataSource {
 		}
 		// compact response array
 		$return = compact('type', 'status', 'transaction_id', 'litleToken', 'errors', 'data', 'request_raw', 'response_array', 'response_raw', 'url');
+		$this->lastRequest = $return;
 		// assign to model if set
 		if (is_object($Model)) {
 			$Model->lastRequest = $return;
@@ -282,11 +324,11 @@ class LitleSource extends DataSource {
 		return $return;
 	}
 	/**
-	* Recursivly look through an array to find a specific key
-	* @param string $needle key to find in the array
-	* @param array $haystack array to search through
-	* @return mixed $output
-	*/
+	 * Recursivly look through an array to find a specific key
+	 * @param string $needle key to find in the array
+	 * @param array $haystack array to search through
+	 * @return mixed $output
+	 */
 	function array_find($needle=null, $haystack=null) {
 		if (array_key_exists($needle, $haystack)) {
 			return $haystack[$needle];
