@@ -123,8 +123,12 @@ class LitleVoid extends LitleAppModel {
 			return false;
 		}
 		extract($this->lastRequest);
-		if (isset($response_array['VoidResponse'])) {
-			$response_array = set::flatten($response_array['VoidResponse']);
+		// extract the "important parts" from any response
+		$keys = array( 'voidResponse', 'VoidResponse', );
+		foreach ($keys as $key) {
+			if (array_key_exists($key, $response_array)) {
+				$response_array = Set::flatten($response_array[$key]);
+			}
 		}
 		extract($response_array);
 		$this->id = $transaction_id = (!empty($litleTxnId) ? $litleTxnId : 0);

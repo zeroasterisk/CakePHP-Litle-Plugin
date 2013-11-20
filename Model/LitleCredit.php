@@ -124,8 +124,12 @@ class LitleCredit extends LitleAppModel {
 			return false;
 		}
 		extract($this->lastRequest);
-		if (isset($response_array['CreditResponse'])) {
-			$response_array = set::flatten($response_array['CreditResponse']);
+		// extract the "important parts" from any response
+		$keys = array( 'creditResponse', 'CreditResponse', );
+		foreach ($keys as $key) {
+			if (array_key_exists($key, $response_array)) {
+				$response_array = Set::flatten($response_array[$key]);
+			}
 		}
 		extract($response_array);
 		$this->id = $transaction_id = (!empty($litleTxnId) ? $litleTxnId : 0);
