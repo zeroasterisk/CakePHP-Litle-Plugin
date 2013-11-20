@@ -182,8 +182,8 @@ class LitleSale extends LitleAppModel {
 			$this->lastRequest = compact('status', 'errors', 'transaction_id');
 			return false;
 		}
-		App::import('Model', 'Litle.LitleVoid');
-		$LitleVoid =& ClassRegistry::init('Litle.LitleVoid');
+		App::uses('LitleVoid', 'Litle.Model');
+		$LitleVoid = ClassRegistry::init('Litle.LitleVoid');
 		$LitleVoid->useDbConfig = 'litle';
 		$data = array('litleTxnId' => $transaction_id) + (!empty($reportGroup) ? array('reportGroup' => $reportGroup) : array());
 		if (empty($orderId) && !empty($orderId) && (is_string($orderId) || is_int($orderId))) {
@@ -197,8 +197,8 @@ class LitleSale extends LitleAppModel {
 			return true;
 		}
 		// now do a credit (no amount = full)
-		App::import('Model', 'Litle.LitleCredit');
-		$LitleCredit =& ClassRegistry::init('Litle.LitleCredit');
+		App::uses('LitleCredit', 'Litle.Model');
+		$LitleCredit = ClassRegistry::init('Litle.LitleCredit');
 		$LitleCredit->useDbConfig = 'litle';
 		$LitleCredit->save($data);
 		$this->log[] = $LitleCredit->lastRequest;
