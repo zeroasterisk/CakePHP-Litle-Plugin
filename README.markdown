@@ -67,7 +67,7 @@ You can see a mockup of a Fixture and a Schema for your own API log tables
 
     ./cake test Litle AllLitle
 
-NOTE: you will need to have your IP address allowed into Litle's certification url/firewall.
+NOTE: you will need to have your IP address allowed into Litle's prelive and postlive url/firewall.
 
 ## About
 

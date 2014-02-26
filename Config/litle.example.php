@@ -23,7 +23,7 @@ $config = array(
 		'password' => '**********',
 		'merchantId' => '**********',
 		'url' => 'https://api.litle.com/vap/communicator/online',
-		# test environment: => 'https://cert.litle.com/vap/communicator/online',
+		# test environment: => 'prelive.litle.com' or 'postlive.litle.com' (see bottom of file)
 		// --- Other Configurations
 		'logModel' => null, // null to disable transaction logging
 		// eg: 'logModel' => 'LitleApiLog', // any model you have, which can save the request/response details
@@ -47,7 +47,7 @@ $config = array(
 			'card.number'					=> array('card_number', 'cc_account', 'cc_number', 'account'),
 			'card.expDate'					=> array('card_expdate', 'card_expire', 'card_expires', 'cc_expires', 'cc_expire', 'expires'),
 			'card.cardValidationNum'		=> array('card_cardvalidationnum', 'card_cvv', 'cc_cvv', 'cvv', 'cvvn'),
-			),
+		),
 		// You can assign default values for ANY API interaction (after the translation)
 		'defaults' => array(
 			// all transactions types with this field will get this default (if not already set)
@@ -58,13 +58,21 @@ $config = array(
 				'customBilling' => array(
 					'phone' => '8888888888',
 					'descriptor' => 'abc*ABC Company',
-					),
 				),
+			),
 			'void' => array(),
 			'refund' => array(),
 			'token' => array(),
 			// etc..
-			),
 		),
-	);
-?>
+	),
+);
+if (Configure::read('debug') > 0 || Configure::read('LitleTesting')) {
+	// use this to test before your account is live
+	//$config['Litle']['url'] = 'http://prelive.litle.com/vap/communicator/online';
+	// use this to test after your account is live
+	$config['Litle']['url'] = 'http://postlive.litle.com/vap/communicator/online';
+	$config['Litle']['user'] = 'xxxx';
+	$config['Litle']['password'] = 'xxxx';
+}
+

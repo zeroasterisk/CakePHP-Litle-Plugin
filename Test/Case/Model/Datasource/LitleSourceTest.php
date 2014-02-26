@@ -103,13 +103,12 @@ class LitleSourceTest extends CakeTestCase {
 	*/
 	public function startTest($method) {
 		parent::startTest($method);
+		Configure::write('LitleTesting', true);
 		$this->LitleSource = new LitleSource();
 		# these details should be set in your config, but can be overridden here
 		# Configure::write('Litle.user', '******');
 		# Configure::write('Litle.password', '******');
 		# Configure::write('Litle.merchantId', '******');
-		# probably always a good idea to override the URL to hit the cert URL
-		Configure::write('Litle.url', 'https://cert.litle.com/vap/communicator/online');
 		Configure::write('Litle.logModel', false);
 	}
 

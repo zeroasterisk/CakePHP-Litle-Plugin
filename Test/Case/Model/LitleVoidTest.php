@@ -17,8 +17,6 @@ class LitleVoidTest extends CakeTestCase {
 		# LitleUtil::$config['user'] = '******';
 		# LitleUtil::$config['password'] = '******';
 		# LitleUtil::$config['merchantId'] = '******';
-		# probably always a good idea to override the URL to hit the cert URL
-		LitleUtil::$config['url'] = 'https://cert.litle.com/vap/communicator/online';
 		LitleUtil::$config['logModel'] = false;
 	}
 	/**
@@ -30,6 +28,7 @@ class LitleVoidTest extends CakeTestCase {
 	*/
 	public function startTest($method) {
 		parent::startTest($method);
+		Configure::write('LitleTesting', true);
 		$this->reconfigure();
 		$this->LitleVoid = ClassRegistry::init('Litle.LitleVoid');
 		$this->LitleSale = ClassRegistry::init('Litle.LitleSale');
