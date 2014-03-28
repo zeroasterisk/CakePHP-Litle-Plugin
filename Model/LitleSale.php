@@ -171,12 +171,16 @@ class LitleSale extends LitleAppModel {
 		$this->lastRequest = compact($this->requestVars);
 		return true;
 	}
+
 	/**
 	 * Overwrite of the delete function
+	 *
 	 * Performs a Void, and if that fails, tries to Credit
+	 *
 	 * @param int $transaction_id
 	 * @param string $orderId optional
 	 * @param string $reportGroup optional
+	 * @return boolean
 	 */
 	public function delete($transaction_id=null, $orderId=null, $reportGroup=null) {
 		$this->lastRequest = array();
@@ -187,6 +191,29 @@ class LitleSale extends LitleAppModel {
 			$this->lastRequest = compact('status', 'errors', 'transaction_id');
 			return false;
 		}
+		$voided = $this->void($transaction_id, $orderId, $reportGroup);
+		if (!empty($voided)) {
+			return true;
+		}
+		$credited = $this->credit($transaction_id, $orderId, $reportGroup);
+		if (!empty($credited)) {
+			return true;
+		}
+		// neither the credit nor the void worked...
+		return false;
+	}
+
+	/**
+	 * alias to Void
+	 *
+	 * Performs a Void
+	 *
+	 * @param int $transaction_id
+	 * @param string $orderId optional
+	 * @param string $reportGroup optional
+	 * @return boolean
+	 */
+	public function void($transaction_id=null, $orderId=null, $reportGroup=null) {
 		App::uses('LitleVoid', 'Litle.Model');
 		$LitleVoid = ClassRegistry::init('Litle.LitleVoid');
 		$LitleVoid->useDbConfig = 'litle';
@@ -201,6 +228,20 @@ class LitleSale extends LitleAppModel {
 		if (isset($this->lastRequest['status']) && $this->lastRequest['status']=='good') {
 			return true;
 		}
+		return false;
+	}
+
+	/**
+	 * alias to Credit
+	 *
+	 * Performs a Credit
+	 *
+	 * @param int $transaction_id
+	 * @param string $orderId optional
+	 * @param string $reportGroup optional
+	 * @return boolean
+	 */
+	public function credit($transaction_id=null, $orderId=null, $reportGroup=null) {
 		// now do a credit (no amount = full)
 		App::uses('LitleCredit', 'Litle.Model');
 		$LitleCredit = ClassRegistry::init('Litle.LitleCredit');
@@ -211,7 +252,6 @@ class LitleSale extends LitleAppModel {
 		if ($this->lastRequest['status']=='good') {
 			return true;
 		}
-		// neither the credit nor the void worked...
 		return false;
 	}
 }

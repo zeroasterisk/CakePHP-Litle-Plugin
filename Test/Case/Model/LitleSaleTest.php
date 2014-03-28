@@ -442,7 +442,7 @@ class LitleSaleTest extends CakeTestCase {
 			$this->AssertTrue(false, "Unable to find 'Recycling.RecycleAdvice' details");
 		}
 	}
-	/*  */
+
 	/**
 	 *
 	 *
