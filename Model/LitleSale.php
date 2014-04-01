@@ -217,11 +217,14 @@ class LitleSale extends LitleAppModel {
 		App::uses('LitleVoid', 'Litle.Model');
 		$LitleVoid = ClassRegistry::init('Litle.LitleVoid');
 		$LitleVoid->useDbConfig = 'litle';
+
 		$data = array('litleTxnId' => $transaction_id) + (!empty($reportGroup) ? array('reportGroup' => $reportGroup) : array());
 		if (empty($orderId) && !empty($orderId) && (is_string($orderId) || is_int($orderId))) {
 			$data['orderId'] = $orderId;
 		}
+
 		$saved = $LitleVoid->save($data);
+		/* Log and errors not consistent with credit() */
 		$this->log[] = $LitleVoid->log;
 		$this->errors[] = $LitleVoid->errors;
 		$this->lastRequest = $LitleVoid->lastRequest;
@@ -246,7 +249,14 @@ class LitleSale extends LitleAppModel {
 		App::uses('LitleCredit', 'Litle.Model');
 		$LitleCredit = ClassRegistry::init('Litle.LitleCredit');
 		$LitleCredit->useDbConfig = 'litle';
+
+		$data = array('litleTxnId' => $transaction_id) + (!empty($reportGroup) ? array('reportGroup' => $reportGroup) : array());
+		if (empty($orderId) && !empty($orderId) && (is_string($orderId) || is_int($orderId))) {
+			$data['orderId'] = $orderId;
+		}
+
 		$LitleCredit->save($data);
+		/* Log and errors not consistent with void() */
 		$this->log[] = $LitleCredit->lastRequest;
 		$this->lastRequest = $LitleCredit->lastRequest;
 		if ($this->lastRequest['status']=='good') {
