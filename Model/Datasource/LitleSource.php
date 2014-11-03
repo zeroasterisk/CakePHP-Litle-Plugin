@@ -263,8 +263,8 @@ class LitleSource extends DataSource {
 
 	/**
 	 *
-	 * Post data to authorize.net. Returns false if there is an error,
-	 * or an array of the parsed response from authorize.net if valid
+	 * Post data to litle. Returns false if there is an error,
+	 * or an array of the parsed response from litle if valid
 	 *
 	 * @param array $request
 	 * @param object $Model optional
@@ -295,7 +295,10 @@ class LitleSource extends DataSource {
 			$response = $this->Http->post($url, $request_raw, $requestOptions);
 			$response_raw = $response->body;
 			if ($this->Http->response['status']['code'] != 200) {
-				$errors[] = "LitleSource: Error: Could not connect to authorize.net... bad credentials?";
+				$errors[] = sprintf('LitleSource: Error: Could not connect to litle... [code=%s, url=%s]',
+					$this->Http->response['status']['code'],
+					$url
+				);
 			}
 		}
 		if (empty($errors)) {
